@@ -77,6 +77,9 @@ test("initiativ og simulerede svar følger niveau og scenarie", () => {
   assert.match(chooseReply(SCENARIOS[2], 1, { challenge: 3 }, "Hvad koster trøjen?"), /249 kroner/);
   assert.match(chooseReply(SCENARIOS[3], 1, { challenge: 3 }, "Jeg kan ikke tåle mælk"), /havredrik/);
   assert.match(chooseReply(SCENARIOS[0], 1, { challenge: 3 }, "Nej, det har jeg ikke lyst til"), /helt okay/i);
+  assert.match(chooseReply(SCENARIOS[0], 1, { challenge: 3 }, "Du er tarvelig hvis du ikke vil lege"), /ikke kaldes noget grimt/);
+  assert.match(chooseReply(SCENARIOS[0], 1, { challenge: 3 }, "Lad os spille fodbold på taget med lærernes hoveder"), /ikke sikkert/);
+  assert.match(chooseReply(SCENARIOS[0], 1, { challenge: 3 }, "Jeg er nervøs og vil ikke være med"), /føles tryg/);
 });
 
 test("talegenkendelse sender automatisk et færdigt svar", () => {

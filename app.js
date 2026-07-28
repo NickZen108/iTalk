@@ -212,6 +212,18 @@
 
   function chooseReply(scenario, turn, levels, input) {
     const clean = String(input || "").toLowerCase().trim();
+    const unsafe = /(på taget|oppe på taget|ud på vejen|midt på vejen|slå|sparke|skubbe|hoved(?:et|er|erne)?|ild|kniv|kvæle|hoppe ud)/.test(clean);
+    const hostile = /(tarvelig|dum|idiot|had(?:er)?|hold kæft|skal bare|ellers vil jeg|kun hvis du|tvinge)/.test(clean);
+    const upset = /(ked af|bange|nervøs|sur|vred|ubehagelig|vil ikke være med)/.test(clean);
+    if (unsafe) {
+      return "Det forslag lyder ikke sikkert. Jeg vil gerne finde på noget, hvor ingen kan komme til skade. Hvad med skolegården eller boldbanen?";
+    }
+    if (hostile) {
+      return "Jeg vil gerne lege, men jeg vil ikke kaldes noget grimt eller presses. Prøv at sige dit ønske på en venlig måde, så kan vi finde en løsning sammen.";
+    }
+    if (upset) {
+      return "Tak fordi du siger det. Vi kan stoppe op og finde en løsning, der føles tryg for os begge. Hvad vil hjælpe dig lige nu?";
+    }
     const definitions = {
       kompromis: "Et kompromis betyder, at vi begge giver os lidt, så vi kan blive enige. Vi kunne for eksempel lege din leg først og min bagefter.",
       størrelse: "Størrelse fortæller, hvor stort eller småt tøjet er, for eksempel 128, small eller medium.",
@@ -249,7 +261,15 @@
       if (/hvem/.test(clean)) return "Vi kan spørge Alma og Malik, om de vil være med. Hvem vil du helst spørge først?";
       if (/hvor/.test(clean)) return "Vi kan lege ude i skolegården eller inde i fællesrummet. Hvad passer bedst?";
       if (/hvad vil du|lyst til/.test(clean)) return "Jeg har lyst til fangeleg, men jeg vil også gerne høre din idé.";
-      if (/skal vi|vi kan|jeg vil gerne/.test(clean)) return `Det lyder som et forslag. Hvad kan vi gøre, hvis jeg hellere vil noget andet?`;
+      if (/skal vi|vi kan|jeg vil gerne|lad os/.test(clean)) {
+        const activity =
+          clean.match(/(?:lege|spille|lave)\s+([a-zæøå ]{2,30})/)?.[1]
+            ?.replace(/\b(med|oppe|ude|inde|på)\b.*$/, "")
+            .trim();
+        return activity
+          ? `${activity[0].toUpperCase()}${activity.slice(1)} kunne være en mulighed. Hvor kan vi gøre det sikkert, og hvad gør vi, hvis en anden hellere vil lege noget andet?`
+          : "Det lyder som et forslag. Hvor kan vi gøre det sikkert, og hvad gør vi, hvis jeg hellere vil noget andet?";
+      }
     }
     if (scenario.id === "directions") {
       if (/hvor lang|hvor langt|tid/.test(clean)) return "Det tager cirka fem minutter at gå. Vil du have et sted at holde øje med undervejs?";
