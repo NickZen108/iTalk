@@ -82,3 +82,30 @@ test("hemmeligheder og lokale miljøfiler kan ikke blive committed", () => {
   assert.match(gitignore, /^\.env\.\*$/m);
   assert.doesNotMatch(example, /service_role\s*=\s*\S+/i);
 });
+
+test("browserklienten bruger kun runtime-miljø og publishable key", () => {
+  const client = fs.readFileSync(path.join(root, "src", "supabase-client.js"), "utf8");
+  const build = fs.readFileSync(path.join(root, "scripts", "build.js"), "utf8");
+  assert.match(client, /ELEVSPOR_CONFIG/);
+  assert.match(client, /createClient\(config\.supabaseUrl, config\.supabasePublishableKey/);
+  assert.match(build, /process\.env\.SUPABASE_URL/);
+  assert.match(build, /process\.env\.SUPABASE_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(client, /service[_-]?role|secret[_-]?key/i);
+  assert.doesNotMatch(build, /service[_-]?role|secret[_-]?key/i);
+});
+
+test("elevens lokale reference hashes før synkronisering", () => {
+  const client = fs.readFileSync(path.join(root, "src", "supabase-client.js"), "utf8");
+  assert.match(client, /crypto\.subtle\.digest\("SHA-256"/);
+  assert.match(client, /local_reference_hash: localReferenceHash/);
+  assert.doesNotMatch(client, /\.(from|rpc)\(["'](?:photos|transcripts|student_names)/);
+});
+
+test("CI kører web-, database- og RLS-testpakken før merge", () => {
+  const workflow = fs.readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8");
+  assert.match(workflow, /pull_request:/);
+  assert.match(workflow, /npm test/);
+  assert.match(workflow, /supabase db reset/);
+  assert.match(workflow, /supabase test db/);
+  assert.ok(fs.existsSync(path.join(root, "supabase/tests/rls_isolation.test.sql")));
+});

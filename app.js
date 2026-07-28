@@ -372,7 +372,15 @@
     resultTitle: $("#result-title"),
     resultMessage: $("#result-message"),
     resultStats: $("#result-stats"),
-    resultHome: $("#result-home")
+    resultHome: $("#result-home"),
+    schoolSessionStatus: $("#school-session-status"),
+    schoolLoginForm: $("#school-login-form"),
+    schoolEmail: $("#school-email"),
+    schoolPassword: $("#school-password"),
+    schoolSignup: $("#school-signup"),
+    schoolOnboardingForm: $("#school-onboarding-form"),
+    schoolName: $("#school-name"),
+    schoolSignout: $("#school-signout")
   };
   Object.assign(els, {
     setupIcon: $("#setup-scenario-icon"),
@@ -406,6 +414,34 @@
 
   function saveProgress() {
     store.write("italk.studentProgress", state.progress);
+  }
+
+  function backendLocalStudentId(studentId) {
+    const key = `elevspor.backendStudent.${studentId}`;
+    let id = store.read(key, "");
+    if (!id) {
+      id = typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      store.write(key, id);
+    }
+    return id;
+  }
+
+  async function recordBackendActivity(type, durationSeconds) {
+    const backend = globalThis.ElevsporSupabase;
+    const progress = currentProgress();
+    if (!backend?.configured || !state.studentId || !progress) return;
+    try {
+      await backend.recordActivity(
+        backendLocalStudentId(state.studentId),
+        type,
+        durationSeconds,
+        progress.birthYear || null
+      );
+    } catch (error) {
+      console.warn("Elevspor-aktivitet kunne ikke synkroniseres", error);
+    }
   }
 
   function showView(name) {
@@ -608,6 +644,7 @@
     };
     progress.attempts += 1;
     saveProgress();
+    void recordBackendActivity("conversation_started", null);
     els.conversationIcon.textContent = scenario.icon;
     els.conversationTitle.textContent = scenario.title;
     els.conversationGoal.textContent = scenario.goal;
@@ -653,6 +690,8 @@
       topic.records = updateRecords(topic.records, session.levels);
       saveProgress();
     }
+    const elapsedSeconds = session.duration - Math.max(0, session.remaining);
+    void recordBackendActivity("conversation_completed", elapsedSeconds);
     state.session = null;
     els.resultIcon.textContent = passed ? "🏆" : "🌱";
     els.resultTitle.textContent = passed ? "Samtalen er bestået!" : "Godt forsøg";
@@ -792,7 +831,90 @@
   });
   els.resultHome.addEventListener("click", renderStudent);
 
+  async function refreshSchoolSession() {
+    const backend = globalThis.ElevsporSupabase;
+    if (!backend?.configured) {
+      els.schoolSessionStatus.textContent = "Supabase er ikke konfigureret i denne udgave.";
+      els.schoolLoginForm.hidden = false;
+      return;
+    }
+    try {
+      const session = await backend.getSession();
+      if (!session) {
+        els.schoolSessionStatus.textContent = "Ikke logget ind.";
+        els.schoolLoginForm.hidden = false;
+        els.schoolOnboardingForm.hidden = true;
+        els.schoolSignout.hidden = true;
+        return;
+      }
+      const membership = await backend.getMembership();
+      els.schoolLoginForm.hidden = true;
+      els.schoolSignout.hidden = false;
+      if (membership) {
+        const schoolName = membership.schools?.name || "skolen";
+        els.schoolSessionStatus.textContent = `Forbundet til ${schoolName} · ${membership.role}`;
+        els.schoolOnboardingForm.hidden = true;
+      } else {
+        els.schoolSessionStatus.textContent = "Login er godkendt. Registrér skolen for at fortsætte.";
+        els.schoolOnboardingForm.hidden = false;
+      }
+    } catch (error) {
+      els.schoolSessionStatus.textContent = `Forbindelsesfejl: ${error.message}`;
+    }
+  }
+
+  els.schoolLoginForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    els.schoolSessionStatus.textContent = "Logger ind…";
+    try {
+      await globalThis.ElevsporSupabase.signIn(
+        els.schoolEmail.value.trim(),
+        els.schoolPassword.value
+      );
+      els.schoolPassword.value = "";
+      await refreshSchoolSession();
+    } catch (error) {
+      els.schoolSessionStatus.textContent = `Login mislykkedes: ${error.message}`;
+    }
+  });
+  els.schoolSignup.addEventListener("click", async () => {
+    if (!els.schoolLoginForm.reportValidity()) return;
+    els.schoolSessionStatus.textContent = "Opretter medarbejder…";
+    try {
+      const result = await globalThis.ElevsporSupabase.signUp(
+        els.schoolEmail.value.trim(),
+        els.schoolPassword.value
+      );
+      els.schoolPassword.value = "";
+      els.schoolSessionStatus.textContent = result.session
+        ? "Medarbejderen er oprettet."
+        : "Medarbejderen er oprettet. Bekræft e-mailen, og log derefter ind.";
+      await refreshSchoolSession();
+    } catch (error) {
+      els.schoolSessionStatus.textContent = `Oprettelse mislykkedes: ${error.message}`;
+    }
+  });
+  els.schoolOnboardingForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    els.schoolSessionStatus.textContent = "Registrerer skole…";
+    try {
+      await globalThis.ElevsporSupabase.registerSchool(els.schoolName.value.trim());
+      els.schoolName.value = "";
+      await refreshSchoolSession();
+    } catch (error) {
+      els.schoolSessionStatus.textContent = `Skolen kunne ikke registreres: ${error.message}`;
+    }
+  });
+  els.schoolSignout.addEventListener("click", async () => {
+    try {
+      await globalThis.ElevsporSupabase.signOut();
+    } finally {
+      await refreshSchoolSession();
+    }
+  });
+
   populateStudents();
+  void refreshSchoolSession();
   if (state.studentId && currentStudent()) selectStudent(state.studentId);
   else showView("welcome");
 
