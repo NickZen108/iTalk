@@ -5,6 +5,14 @@ const {
   calculateHero, createProgress, chronologicalAge, effectiveAge, rememberTopic,
   createCustomScenario, getInitiator, isConversationPassed, chooseReply
 } = require("../app.js");
+const fs = require("node:fs");
+const path = require("node:path");
+
+test("viser seneste udgivelsesdato og tidspunkt øverst", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  assert.match(html, /Senest opdateret:/);
+  assert.match(html, /<time datetime="[^"]+">[^<]+kl\.[^<]+<\/time>/);
+});
 
 test("har fem fiktive elever med alle otte sværhedsfaktorer", () => {
   assert.equal(STUDENTS.length, 5);

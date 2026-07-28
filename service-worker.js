@@ -1,4 +1,4 @@
-const CACHE = "italk-v3";
+const CACHE = "italk-v4";
 const ASSETS = [
   "./",
   "./index.html",
