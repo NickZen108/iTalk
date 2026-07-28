@@ -30,9 +30,13 @@ async function getSession() {
   return data.session;
 }
 
-async function signUp(email, password) {
+async function signUp(email, password, displayName) {
   const supabase = await requireClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: displayName ? { data: { display_name: displayName } } : undefined
+  });
   if (error) throw error;
   return data;
 }

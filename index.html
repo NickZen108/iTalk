@@ -20,21 +20,15 @@
       <span class="brand-mark" aria-hidden="true">•••</span>
       <span>Elevspor</span>
     </button>
-    <div class="student-picker">
-      <label for="student-select">Elev</label>
-      <select id="student-select">
-        <option value="">Vælg elev…</option>
-      </select>
-    </div>
   </header>
 
   <main id="main">
     <section id="welcome-view" class="view welcome">
       <p class="eyebrow">Samtaletræning i trygge rammer</p>
-      <h1>Vælg en elev øverst</h1>
-      <p>Elevspor husker navn, foto, fremskridt og indstillinger lokalt på denne enhed.</p>
+      <h1>Log ind på Elevspor</h1>
+      <p>Lærere opretter og godkender elever fra skolens sikre lærerområde.</p>
       <div class="privacy-note"><span aria-hidden="true">🔒</span> Elevnavne, elevfotos og samtaleindhold sendes ikke til Supabase.</div>
-      <details class="settings school-access">
+      <details class="settings school-access" open>
         <summary>Skolens sikre login</summary>
         <div class="settings-body">
           <p id="school-session-status" class="hint" aria-live="polite">Kontrollerer forbindelse…</p>
@@ -56,6 +50,28 @@
           <button id="school-signout" class="secondary-button" type="button" hidden>Log ud</button>
         </div>
       </details>
+    </section>
+
+    <section id="school-dashboard-view" class="view" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">Lærerområde</p>
+          <h1>Elever på denne enhed</h1>
+          <p id="teacher-profile-name"></p>
+        </div>
+        <button id="dashboard-signout" class="secondary-button" type="button">Log ud</button>
+      </div>
+      <div class="privacy-note"><span aria-hidden="true">🔒</span> Elevnavne bliver på denne enhed. Supabase modtager kun et anonymt elev-id.</div>
+      <form id="create-student-form" class="teacher-form create-student-form">
+        <h2>Opret elev</h2>
+        <label for="new-student-name">Elevens navn</label>
+        <input id="new-student-name" maxlength="80" autocomplete="off" required>
+        <label for="new-student-birth-year">Fødselsår</label>
+        <input id="new-student-birth-year" type="number" min="1926" max="2026" inputmode="numeric" required>
+        <button class="primary-button" type="submit">Opret elev til godkendelse</button>
+        <p id="create-student-status" class="save-status" aria-live="polite"></p>
+      </form>
+      <div id="teacher-student-list" class="student-admin-list"></div>
     </section>
 
     <section id="role-view" class="view" hidden>
@@ -82,7 +98,7 @@
           <p class="eyebrow">Elevområde</p>
           <h1>Hej <span id="student-name"></span>!</h1>
         </div>
-        <button class="secondary-button" type="button" data-back="role">Skift rolle</button>
+        <button class="secondary-button" type="button" data-back="school-dashboard">Til lærerområdet</button>
       </div>
 
       <div id="student-approval-panel" class="approval-panel" role="status" aria-live="polite">
@@ -139,7 +155,7 @@
           <p class="eyebrow">Lærerområde · <span id="teacher-student-name"></span></p>
           <h1>Status og tilpasning</h1>
         </div>
-        <button class="secondary-button" type="button" data-back="role">Skift rolle</button>
+        <button class="secondary-button" type="button" data-back="school-dashboard">Til elevlisten</button>
       </div>
 
       <div id="teacher-summary" class="teacher-summary"></div>

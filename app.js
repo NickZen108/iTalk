@@ -319,6 +319,9 @@
     }
   };
 
+  const localStudents = store.read("elevspor.localStudents", []);
+  STUDENTS.splice(0, STUDENTS.length, ...(Array.isArray(localStudents) ? localStudents : []));
+
   const state = {
     studentId: store.read("italk.selectedStudent", ""),
     progress: store.read("italk.studentProgress", {}),
@@ -331,7 +334,6 @@
   const $ = selector => document.querySelector(selector);
   const els = {
     views: Array.from(document.querySelectorAll(".view")),
-    studentSelect: $("#student-select"),
     home: $("#home-button"),
     roleName: $("#role-student-name"),
     studentName: $("#student-name"),
@@ -382,6 +384,13 @@
     schoolOnboardingForm: $("#school-onboarding-form"),
     schoolName: $("#school-name"),
     schoolSignout: $("#school-signout"),
+    dashboardSignout: $("#dashboard-signout"),
+    teacherProfileName: $("#teacher-profile-name"),
+    createStudentForm: $("#create-student-form"),
+    newStudentName: $("#new-student-name"),
+    newStudentBirthYear: $("#new-student-birth-year"),
+    createStudentStatus: $("#create-student-status"),
+    teacherStudentList: $("#teacher-student-list"),
     studentApprovalPanel: $("#student-approval-panel"),
     teacherApprovalStatus: $("#teacher-approval-status"),
     approveStudent: $("#approve-student")
@@ -495,16 +504,6 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function populateStudents() {
-    STUDENTS.forEach(student => {
-      const option = document.createElement("option");
-      option.value = student.id;
-      option.textContent = `${student.avatar} ${student.name}`;
-      els.studentSelect.append(option);
-    });
-    els.studentSelect.value = state.studentId;
-  }
-
   function selectStudent(id) {
     state.studentId = id;
     store.write("italk.selectedStudent", id);
@@ -517,6 +516,86 @@
     saveProgress();
     els.roleName.textContent = student.name;
     showView("role");
+  }
+
+  function saveLocalStudents() {
+    store.write("elevspor.localStudents", STUDENTS);
+  }
+
+  async function renderSchoolDashboard() {
+    const backend = globalThis.ElevsporSupabase;
+    const session = await backend?.getSession();
+    if (!session) {
+      showView("welcome");
+      return;
+    }
+    const membership = await backend.getMembership();
+    if (!membership) {
+      showView("welcome");
+      return;
+    }
+    const displayName = session.user.user_metadata?.display_name
+      || session.user.email?.split("@")[0]
+      || "Lærer";
+    els.teacherProfileName.textContent = `${displayName} · ${membership.schools?.name || "skolen"}`;
+    els.teacherStudentList.replaceChildren();
+    if (!STUDENTS.length) {
+      const empty = document.createElement("p");
+      empty.className = "approval-panel";
+      empty.textContent = "Der er endnu ingen elever på denne enhed.";
+      els.teacherStudentList.append(empty);
+    }
+    for (const student of STUDENTS) {
+      state.studentId = student.id;
+      currentProgress();
+      const approval = await loadStudentApproval();
+      const card = document.createElement("article");
+      card.className = "student-admin-card";
+      card.innerHTML = `
+        <div><strong>${student.avatar} ${student.name}</strong>
+        <p>${approval.status === "approved" ? "Godkendt" : approval.status === "pending" ? "Afventer lærerens godkendelse" : approval.message}</p></div>
+        <div class="student-admin-actions"></div>`;
+      const actions = card.querySelector(".student-admin-actions");
+      if (approval.status === "pending") {
+        const approve = document.createElement("button");
+        approve.className = "primary-button";
+        approve.type = "button";
+        approve.textContent = "Godkend";
+        approve.addEventListener("click", async () => {
+          approve.disabled = true;
+          try {
+            await backend.approveStudent(approval.student.id);
+            await renderSchoolDashboard();
+          } catch (error) {
+            card.querySelector("p").textContent = `Godkendelse mislykkedes: ${error.message}`;
+            approve.disabled = false;
+          }
+        });
+        actions.append(approve);
+      }
+      const pupilButton = document.createElement("button");
+      pupilButton.className = "secondary-button";
+      pupilButton.type = "button";
+      pupilButton.textContent = "Åbn elevområde";
+      pupilButton.disabled = approval.status !== "approved";
+      pupilButton.addEventListener("click", () => {
+        selectStudent(student.id);
+        void renderStudent();
+      });
+      const teacherButton = document.createElement("button");
+      teacherButton.className = "secondary-button";
+      teacherButton.type = "button";
+      teacherButton.textContent = "Status og indstillinger";
+      teacherButton.addEventListener("click", () => {
+        selectStudent(student.id);
+        void renderTeacher();
+      });
+      actions.append(pupilButton, teacherButton);
+      els.teacherStudentList.append(card);
+    }
+    state.studentId = "";
+    store.write("italk.selectedStudent", "");
+    showView("school-dashboard");
   }
 
   async function renderStudent() {
@@ -766,15 +845,15 @@
     showView("result");
   }
 
-  els.studentSelect.addEventListener("change", event => selectStudent(event.target.value));
   els.home.addEventListener("click", () => selectStudent(""));
   els.chooseStudent.addEventListener("click", () => { void renderStudent(); });
   els.chooseTeacher.addEventListener("click", () => { void renderTeacher(); });
   document.querySelectorAll("[data-back]").forEach(button => {
     button.addEventListener("click", () => {
       if (button.dataset.back === "welcome") {
-        els.studentSelect.value = "";
         selectStudent("");
+      } else if (button.dataset.back === "school-dashboard") {
+        void renderSchoolDashboard();
       } else showView("role");
     });
   });
@@ -828,6 +907,40 @@
     progress.mentalAge = els.mentalAge.value && mentalAge >= 2 && mentalAge <= 100 ? mentalAge : "";
     saveProgress();
     els.teacherSaveStatus.textContent = "Gemt på denne enhed ✓";
+  });
+  els.createStudentForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    const name = els.newStudentName.value.trim();
+    const birthYear = Number(els.newStudentBirthYear.value);
+    if (!name || birthYear < 1926 || birthYear > 2026) return;
+    const id = typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const student = {
+      id,
+      name,
+      avatar: "🎯",
+      profile: "Ny elevprofil",
+      levels: defaultLevels()
+    };
+    STUDENTS.push(student);
+    saveLocalStudents();
+    state.studentId = id;
+    const progress = currentProgress();
+    progress.birthYear = birthYear;
+    saveProgress();
+    els.createStudentStatus.textContent = "Opretter sikker elevtilmelding…";
+    try {
+      await globalThis.ElevsporSupabase.getStudentApproval(
+        backendLocalStudentId(id),
+        birthYear
+      );
+      els.createStudentForm.reset();
+      els.createStudentStatus.textContent = "Eleven er oprettet og afventer godkendelse.";
+      await renderSchoolDashboard();
+    } catch (error) {
+      els.createStudentStatus.textContent = `Eleven kunne ikke tilmeldes: ${error.message}`;
+    }
   });
   els.approveStudent.addEventListener("click", async () => {
     const studentId = els.approveStudent.dataset.studentId;
@@ -931,6 +1044,7 @@
         const schoolName = membership.schools?.name || "skolen";
         els.schoolSessionStatus.textContent = `Forbundet til ${schoolName} · ${membership.role}`;
         els.schoolOnboardingForm.hidden = true;
+        await renderSchoolDashboard();
       } else {
         els.schoolSessionStatus.textContent = "Login er godkendt. Registrér skolen for at fortsætte.";
         els.schoolOnboardingForm.hidden = false;
@@ -989,11 +1103,14 @@
       await refreshSchoolSession();
     }
   });
+  els.dashboardSignout.addEventListener("click", async () => {
+    await globalThis.ElevsporSupabase.signOut();
+    showView("welcome");
+    await refreshSchoolSession();
+  });
 
-  populateStudents();
   void refreshSchoolSession();
-  if (state.studentId && currentStudent()) selectStudent(state.studentId);
-  else showView("welcome");
+  showView("welcome");
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", async () => {

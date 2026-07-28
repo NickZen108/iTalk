@@ -37,12 +37,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 }
 .brand { display: flex; align-items: center; gap: .55rem; padding: 0; border: 0; background: transparent; color: var(--ink); font-weight: 850; font-size: 1.4rem; }
 .brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: var(--brand); color: #fff; letter-spacing: 2px; }
-.student-picker { display: flex; align-items: center; gap: .5rem; }
-.student-picker label { font-weight: 750; }
 select, input, textarea {
   border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); padding: .65rem .75rem;
 }
-.student-picker select { width: min(190px, 47vw); min-height: 48px; }
 
 main { width: min(1040px, 100%); margin: 0 auto; padding: 1.25rem 1rem 5rem; }
 .view { animation: appear .2s ease-out; }
@@ -214,3 +211,20 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
 
 .approval-panel p:last-child { margin-bottom: 0; }
 .teacher-approval .primary-button { margin-top: .5rem; }
+
+.create-student-form { margin: 1.25rem 0; }
+.student-admin-list { display: grid; gap: .75rem; }
+.student-admin-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .75rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.student-admin-card p { margin: .2rem 0 0; color: var(--muted); }
+.student-admin-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+button:disabled { opacity: .55; cursor: not-allowed; }
