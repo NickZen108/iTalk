@@ -324,7 +324,8 @@
     progress: store.read("italk.studentProgress", {}),
     activeScenario: null,
     session: null,
-    timerId: null
+    timerId: null,
+    approval: null
   };
 
   const $ = selector => document.querySelector(selector);
@@ -380,7 +381,10 @@
     schoolSignup: $("#school-signup"),
     schoolOnboardingForm: $("#school-onboarding-form"),
     schoolName: $("#school-name"),
-    schoolSignout: $("#school-signout")
+    schoolSignout: $("#school-signout"),
+    studentApprovalPanel: $("#student-approval-panel"),
+    teacherApprovalStatus: $("#teacher-approval-status"),
+    approveStudent: $("#approve-student")
   };
   Object.assign(els, {
     setupIcon: $("#setup-scenario-icon"),
@@ -444,6 +448,48 @@
     }
   }
 
+  async function loadStudentApproval() {
+    const backend = globalThis.ElevsporSupabase;
+    const progress = currentProgress();
+    if (!backend?.configured) return { status: "unavailable", message: "Skolens forbindelse er ikke konfigureret." };
+    if (!await backend.getSession()) return { status: "unavailable", message: "En medarbejder skal logge skolen ind på enheden først." };
+    try {
+      const student = await backend.getStudentApproval(
+        backendLocalStudentId(state.studentId),
+        progress.birthYear || null
+      );
+      state.approval = student;
+      return {
+        status: student.approval_status,
+        student,
+        message: student.approval_status === "approved"
+          ? "Godkendt af en lærer. Du kan gå i gang."
+          : student.approval_status === "rejected"
+            ? "Tilmeldingen er afvist. Tal med en lærer."
+            : "Din tilmelding venter på en lærers godkendelse."
+      };
+    } catch (error) {
+      state.approval = null;
+      return { status: "unavailable", message: `Adgangen kunne ikke kontrolleres: ${error.message}` };
+    }
+  }
+
+  function setTrainingAvailability(approved) {
+    document.querySelectorAll(".scenario-card, #show-all-topics, #begin-conversation")
+      .forEach(control => { control.disabled = !approved; });
+  }
+
+  async function refreshStudentApproval() {
+    const approval = await loadStudentApproval();
+    const approved = approval.status === "approved";
+    els.studentApprovalPanel.dataset.status = approval.status;
+    els.studentApprovalPanel.innerHTML = approved
+      ? `<strong>✓ Godkendt</strong><p>${approval.message}</p>`
+      : `<strong>${approval.status === "pending" ? "Afventer lærer" : "Adgang ikke klar"}</strong><p>${approval.message}</p>`;
+    setTrainingAvailability(approved);
+    return approval;
+  }
+
   function showView(name) {
     els.views.forEach(view => { view.hidden = view.id !== `${name}-view`; });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -473,7 +519,7 @@
     showView("role");
   }
 
-  function renderStudent() {
+  async function renderStudent() {
     const student = currentStudent();
     const progress = currentProgress();
     els.studentName.textContent = student.name;
@@ -488,6 +534,8 @@
     populateAllTopics();
     populateVoices();
     showView("student");
+    setTrainingAvailability(false);
+    await refreshStudentApproval();
   }
 
   function renderScenarioCard(scenario, container) {
@@ -547,7 +595,7 @@
     showView("scenario-setup");
   }
 
-  function renderTeacher() {
+  async function renderTeacher() {
     const student = currentStudent();
     const progress = currentProgress();
     els.teacherName.textContent = student.name;
@@ -564,6 +612,18 @@
     els.mentalAge.value = progress.mentalAge || "";
     els.teacherSaveStatus.textContent = "";
     showView("teacher");
+    els.approveStudent.hidden = true;
+    els.teacherApprovalStatus.textContent = "Kontrollerer elevens status…";
+    const approval = await loadStudentApproval();
+    if (approval.status === "approved") {
+      els.teacherApprovalStatus.textContent = "Eleven er godkendt og kan bruge samtaletræningen.";
+    } else if (approval.status === "pending") {
+      els.teacherApprovalStatus.textContent = "Eleven afventer godkendelse. Godkendelse gør det muligt at starte øvelser og registrere aktivitet.";
+      els.approveStudent.dataset.studentId = approval.student.id;
+      els.approveStudent.hidden = false;
+    } else {
+      els.teacherApprovalStatus.textContent = approval.message;
+    }
   }
 
   function availableVoices() {
@@ -708,8 +768,8 @@
 
   els.studentSelect.addEventListener("change", event => selectStudent(event.target.value));
   els.home.addEventListener("click", () => selectStudent(""));
-  els.chooseStudent.addEventListener("click", renderStudent);
-  els.chooseTeacher.addEventListener("click", renderTeacher);
+  els.chooseStudent.addEventListener("click", () => { void renderStudent(); });
+  els.chooseTeacher.addEventListener("click", () => { void renderTeacher(); });
   document.querySelectorAll("[data-back]").forEach(button => {
     button.addEventListener("click", () => {
       if (button.dataset.back === "welcome") {
@@ -718,9 +778,11 @@
       } else showView("role");
     });
   });
-  els.cancelSetup.addEventListener("click", renderStudent);
+  els.cancelSetup.addEventListener("click", () => { void renderStudent(); });
   els.beginConversation.addEventListener("click", () => {
-    if (state.activeScenario) startConversation(state.activeScenario);
+    if (state.approval?.approval_status === "approved" && state.activeScenario) {
+      startConversation(state.activeScenario);
+    }
   });
   els.voiceSelect.addEventListener("change", () => {
     currentProgress().voice = els.voiceSelect.value;
@@ -766,6 +828,21 @@
     progress.mentalAge = els.mentalAge.value && mentalAge >= 2 && mentalAge <= 100 ? mentalAge : "";
     saveProgress();
     els.teacherSaveStatus.textContent = "Gemt på denne enhed ✓";
+  });
+  els.approveStudent.addEventListener("click", async () => {
+    const studentId = els.approveStudent.dataset.studentId;
+    if (!studentId) return;
+    els.approveStudent.disabled = true;
+    els.teacherApprovalStatus.textContent = "Godkender eleven…";
+    try {
+      await globalThis.ElevsporSupabase.approveStudent(studentId);
+      els.teacherApprovalStatus.textContent = "Eleven er godkendt ✓";
+      els.approveStudent.hidden = true;
+      state.approval = { ...state.approval, approval_status: "approved" };
+    } catch (error) {
+      els.teacherApprovalStatus.textContent = `Godkendelsen mislykkedes: ${error.message}`;
+      els.approveStudent.disabled = false;
+    }
   });
   function sendStudentMessage() {
     const text = els.chatInput.value.trim();
@@ -829,7 +906,7 @@
   els.leaveConversation.addEventListener("click", () => {
     if (window.confirm("Vil du afslutte øvelsen før tid?")) finishConversation(false);
   });
-  els.resultHome.addEventListener("click", renderStudent);
+  els.resultHome.addEventListener("click", () => { void renderStudent(); });
 
   async function refreshSchoolSession() {
     const backend = globalThis.ElevsporSupabase;

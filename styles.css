@@ -192,3 +192,25 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+.approval-panel {
+  margin: 1rem 0 1.5rem;
+  padding: 1rem 1.1rem;
+  border: 2px solid #d6a83b;
+  border-radius: 16px;
+  background: #fff8df;
+  color: #3f3520;
+}
+
+.approval-panel[data-status="approved"] {
+  border-color: #66a38f;
+  background: #edf8f3;
+}
+
+.approval-panel[data-status="unavailable"] {
+  border-color: #bdc7c4;
+  background: #f3f6f5;
+}
+
+.approval-panel p:last-child { margin-bottom: 0; }
+.teacher-approval .primary-button { margin-top: .5rem; }

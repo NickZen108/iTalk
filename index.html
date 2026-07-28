@@ -85,6 +85,11 @@
         <button class="secondary-button" type="button" data-back="role">Skift rolle</button>
       </div>
 
+      <div id="student-approval-panel" class="approval-panel" role="status" aria-live="polite">
+        <strong>Kontrollerer din adgang…</strong>
+        <p>Eleven skal godkendes af en lærer, før samtaletræningen kan begynde.</p>
+      </div>
+
       <section class="task-section" aria-labelledby="tasks-title">
         <div class="section-heading">
           <div>
@@ -138,6 +143,13 @@
       </div>
 
       <div id="teacher-summary" class="teacher-summary"></div>
+
+      <section class="approval-panel teacher-approval" aria-labelledby="approval-title">
+        <p class="eyebrow">Sikker elevtilmelding</p>
+        <h2 id="approval-title">Godkend elev</h2>
+        <p id="teacher-approval-status" aria-live="polite">Kontrollerer elevens status…</p>
+        <button id="approve-student" class="primary-button" type="button" hidden>Godkend eleven</button>
+      </section>
 
       <form id="teacher-form" class="teacher-form">
         <label for="mental-age">

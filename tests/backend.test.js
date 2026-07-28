@@ -11,6 +11,10 @@ const migrationPath = path.join(
   "20260728122000_italk_backend.sql"
 );
 const sql = fs.readFileSync(migrationPath, "utf8");
+const approvalSql = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20260728203000_student_teacher_approval.sql"),
+  "utf8"
+);
 
 test("backend-migrationen har de nødvendige tenant-tabeller", () => {
   [
@@ -99,6 +103,21 @@ test("elevens lokale reference hashes før synkronisering", () => {
   assert.match(client, /crypto\.subtle\.digest\("SHA-256"/);
   assert.match(client, /local_reference_hash: localReferenceHash/);
   assert.doesNotMatch(client, /\.(from|rpc)\(["'](?:photos|transcripts|student_names)/);
+});
+
+test("nye elever afventer lærer og kan ikke skabe aktivitet før godkendelse", () => {
+  assert.match(approvalSql, /approval_status text not null default 'pending'/);
+  assert.match(approvalSql, /alter column active set default false/);
+  assert.match(approvalSql, /create or replace function public\.approve_student/);
+  assert.match(approvalSql, /public\.is_school_member\(school_id\)/);
+  assert.match(approvalSql, /s\.approval_status = 'approved'/);
+  assert.doesNotMatch(approvalSql, /grant execute on function public\.approve_student\(uuid\) to anon/);
+});
+
+test("fakturering kræver aktivitet og pending elever kan derfor ikke faktureres", () => {
+  assert.match(sql, /from public\.student_activities a/);
+  assert.match(approvalSql, /drop policy activities_insert_own_school/);
+  assert.match(approvalSql, /activities_insert_approved_student/);
 });
 
 test("CI kører web-, database- og RLS-testpakken før merge", () => {

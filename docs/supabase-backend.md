@@ -15,6 +15,8 @@ Supabase Free Plan og kan senere flyttes til en betalt Supabase-plan uden
   e-mail og token gemmes.
 - `students`: anonym backendprofil. Navn og profilfoto må ikke sendes til
   Supabase; appen kobler sin lokale profil til `local_reference_hash`.
+  Nye elever oprettes som `pending` og inaktive, indtil en medarbejder fra
+  samme skole godkender dem.
 - `student_activities`: hændelser med tidspunkt og valgfri varighed.
 - `billing_settings`: versionsstyret pris og aktivitetsgrænse.
 - `monthly_report_runs`: frosne månedsopgørelser.
@@ -35,6 +37,10 @@ Standardrækken i `billing_settings` siger:
 Reglen ændres ved at lukke den gældende periodes `effective_until` og
 indsætte en ny række. Historiske rapporter beholder den pris, de blev
 beregnet med.
+
+En elev, der kun er oprettet eller afventer godkendelse, kan ikke skrive
+aktivitet og bliver derfor ikke fakturerbar. Først efter lærerens godkendelse
+kan eleven starte en samtale, som opretter en aktivitet.
 
 ## Lokal opsætning
 
@@ -114,6 +120,23 @@ lægges i frontend, repository, GitHub Variables, logs eller beskeder.
    `claim_school_invitation(token)`.
 
 Tokenet udløber efter syv dage. Owner-rollen kan ikke uddeles via invitation.
+
+## Elevtilmelding og lærergodkendelse
+
+1. Elevens lokale profil anmoder om adgang gennem `students`. Kun profilens
+   SHA-256-reference, fødselsår og tekniske metadata sendes til Supabase.
+2. Nye rækker får `approval_status = 'pending'` og `active = false`.
+3. Elevområdet låser samtaleøvelser, mens godkendelsen afventer.
+4. En indlogget medarbejder fra samme skole godkender via
+   `approve_student(student_id)`.
+5. RPC'en sætter `approved`, `active`, tidspunkt og godkenderens bruger-id.
+6. RLS-politikken for `student_activities` accepterer kun aktivitet, hvis
+   elevens skole matcher JWT-brugerens skole, og eleven både er aktiv og
+   godkendt.
+
+Backend gemmer fortsat ikke elevnavn eller foto. Derfor vises navnet kun på
+den enhed, hvor profilen er oprettet. Denne privacy-first MVP kræver, at
+læreren godkender elevprofilen på en skoleenhed, der kender den lokale profil.
 
 ## Månedlige rapporter
 
