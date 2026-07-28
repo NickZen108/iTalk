@@ -140,7 +140,43 @@
       completed: [],
       attempts: 0,
       voice: "",
+      birthYear: "",
+      mentalAge: "",
+      recentTopics: SCENARIOS.map(item => item.id),
+      customTopics: [],
       notes: { status: "", wishes: "" }
+    };
+  }
+
+  function chronologicalAge(birthYear, year) {
+    const born = Number(birthYear);
+    const now = Number(year) || new Date().getFullYear();
+    return Number.isInteger(born) && born >= now - 100 && born <= now ? now - born : null;
+  }
+
+  function effectiveAge(progress, year) {
+    const override = Number(progress && progress.mentalAge);
+    if (Number.isInteger(override) && override >= 2 && override <= 100) return override;
+    return chronologicalAge(progress && progress.birthYear, year);
+  }
+
+  function rememberTopic(recentTopics, id, limit) {
+    const clean = (Array.isArray(recentTopics) ? recentTopics : []).filter(item => item !== id);
+    return [id, ...clean].slice(0, limit || 5);
+  }
+
+  function createCustomScenario(title, age) {
+    const cleanTitle = String(title || "").trim().slice(0, 80);
+    if (!cleanTitle) return null;
+    const ageHint = age ? ` Samtalen tilpasses et udviklingsniveau omkring ${age} år.` : "";
+    return {
+      id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      icon: "💬", title: cleanTitle,
+      goal: `Øv en tryg samtale om ${cleanTitle.toLowerCase()}.${ageHint}`,
+      aiName: "samtalepartneren",
+      suggestions: [`Vil du tale om ${cleanTitle.toLowerCase()}?`, "Hvad tænker du om det?", "Kan du fortælle lidt mere?"],
+      opening: [`Hej! Skal vi tale om ${cleanTitle.toLowerCase()}?`, `Hvad synes du er interessant ved ${cleanTitle.toLowerCase()}?`, `Fortæl mig gerne noget om ${cleanTitle.toLowerCase()}.`],
+      replies: ["Det er interessant. Kan du fortælle lidt mere?", "Hvad synes du selv om det?", "Okay. Hvad skete der så?", "Godt fortalt. Er der noget, du vil spørge mig om?"]
     };
   }
 
@@ -165,7 +201,8 @@
 
   const api = {
     FACTORS, STUDENTS, SCENARIOS, clampLevel, describeFactor,
-    calculateHero, createProgress, getInitiator, isConversationPassed, chooseReply
+    calculateHero, createProgress, chronologicalAge, effectiveAge, rememberTopic,
+    createCustomScenario, getInitiator, isConversationPassed, chooseReply
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.iTalkCore = api;
@@ -214,6 +251,16 @@
     teacherForm: $("#teacher-form"),
     teacherStatus: $("#teacher-status"),
     teacherWishes: $("#teacher-wishes"),
+    birthYear: $("#birth-year"),
+    studentAge: $("#student-age"),
+    teacherChronologicalAge: $("#teacher-chronological-age"),
+    mentalAge: $("#mental-age"),
+    topicDialog: $("#topic-dialog"),
+    allScenarioGrid: $("#all-scenario-grid"),
+    showAllTopics: $("#show-all-topics"),
+    closeTopics: $("#close-topics"),
+    customTopicForm: $("#custom-topic-form"),
+    customTopicTitle: $("#custom-topic-title"),
     teacherSaveStatus: $("#teacher-save-status"),
     leaveConversation: $("#leave-conversation"),
     timer: $("#timer"),
@@ -224,6 +271,8 @@
     chatLog: $("#chat-log"),
     chatForm: $("#chat-form"),
     chatInput: $("#chat-input"),
+    speechButton: $("#speech-button"),
+    speechStatus: $("#speech-status"),
     suggestions: $("#reply-suggestions"),
     resultIcon: $("#result-icon"),
     resultTitle: $("#result-title"),
@@ -240,7 +289,16 @@
     const student = currentStudent();
     if (!student) return null;
     if (!state.progress[student.id]) state.progress[student.id] = createProgress(student);
-    return state.progress[student.id];
+    const progress = state.progress[student.id];
+    if (!Array.isArray(progress.recentTopics)) progress.recentTopics = SCENARIOS.map(item => item.id);
+    if (!Array.isArray(progress.customTopics)) progress.customTopics = [];
+    if (progress.birthYear === undefined) progress.birthYear = "";
+    if (progress.mentalAge === undefined) progress.mentalAge = "";
+    return progress;
+  }
+
+  function allScenarios(progress) {
+    return [...SCENARIOS, ...(progress.customTopics || [])];
   }
 
   function saveProgress() {
@@ -305,22 +363,39 @@
       els.skillGrid.append(card);
     });
 
+    const age = chronologicalAge(progress.birthYear);
+    els.birthYear.value = progress.birthYear || "";
+    els.studentAge.textContent = age === null ? "Angiv fødselsår for at tilpasse emner og samtaler." : `Din alder: ${age} år`;
     els.completedCount.textContent = `${progress.completed.length} bestået`;
     els.scenarioGrid.replaceChildren();
-    SCENARIOS.forEach(scenario => {
-      const completions = progress.completed.filter(id => id === scenario.id).length;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "scenario-card";
-      button.innerHTML = `
-        <span class="scenario-icon" aria-hidden="true">${scenario.icon}</span>
-        <span><strong>${scenario.title}</strong><small>${scenario.goal}</small></span>
-        <span class="scenario-status">${completions ? `✓ ${completions}` : "Start →"}</span>`;
-      button.addEventListener("click", () => startConversation(scenario));
-      els.scenarioGrid.append(button);
-    });
+    const scenarios = allScenarios(progress);
+    (progress.recentTopics || []).map(id => scenarios.find(item => item.id === id)).filter(Boolean).slice(0, 5)
+      .forEach(scenario => renderScenarioCard(scenario, els.scenarioGrid));
+    populateAllTopics();
     populateVoices();
     showView("student");
+  }
+
+  function renderScenarioCard(scenario, container) {
+    const progress = currentProgress();
+    const completions = progress.completed.filter(id => id === scenario.id).length;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "scenario-card";
+    button.innerHTML = `
+      <span class="scenario-icon" aria-hidden="true">${scenario.icon}</span>
+      <span><strong>${scenario.title}</strong><small>${scenario.goal}</small></span>
+      <span class="scenario-status">${completions ? `✓ ${completions}` : "Start →"}</span>`;
+    button.addEventListener("click", () => {
+      if (els.topicDialog.open) els.topicDialog.close();
+      startConversation(scenario);
+    });
+    container.append(button);
+  }
+
+  function populateAllTopics() {
+    els.allScenarioGrid.replaceChildren();
+    allScenarios(currentProgress()).forEach(scenario => renderScenarioCard(scenario, els.allScenarioGrid));
   }
 
   function renderTeacher() {
@@ -335,6 +410,11 @@
       <div class="summary-stat"><strong>${progress.attempts}</strong><span>Forsøg</span></div>`;
     els.teacherStatus.value = progress.notes.status || "";
     els.teacherWishes.value = progress.notes.wishes || "";
+    const chronological = chronologicalAge(progress.birthYear);
+    els.teacherChronologicalAge.textContent = chronological === null
+      ? "Eleven har ikke angivet fødselsår endnu."
+      : `Kronologisk alder: ${chronological} år (født ${progress.birthYear})`;
+    els.mentalAge.value = progress.mentalAge || "";
     els.teacherSaveStatus.textContent = "";
     showView("teacher");
   }
@@ -404,6 +484,7 @@
 
   function startConversation(scenario) {
     const progress = currentProgress();
+    progress.recentTopics = rememberTopic(progress.recentTopics, scenario.id, 5);
     state.activeScenario = scenario;
     state.session = {
       remaining: clampLevel(progress.levels.duration) * 60,
@@ -498,12 +579,43 @@
     saveProgress();
   });
   els.previewVoice.addEventListener("click", () => speak(`Hej ${currentStudent().name}. Sådan lyder min stemme.`));
+  els.birthYear.addEventListener("change", () => {
+    const progress = currentProgress();
+    const age = chronologicalAge(els.birthYear.value);
+    if (els.birthYear.value && age === null) {
+      els.studentAge.textContent = "Skriv et gyldigt fødselsår.";
+      return;
+    }
+    progress.birthYear = els.birthYear.value ? Number(els.birthYear.value) : "";
+    saveProgress();
+    els.studentAge.textContent = age === null ? "Angiv fødselsår for at tilpasse emner og samtaler." : `Din alder: ${age} år`;
+  });
+  els.showAllTopics.addEventListener("click", () => {
+    populateAllTopics();
+    if (typeof els.topicDialog.showModal === "function") els.topicDialog.showModal();
+    else els.topicDialog.setAttribute("open", "");
+  });
+  els.closeTopics.addEventListener("click", () => els.topicDialog.close());
+  els.customTopicForm.addEventListener("submit", event => {
+    event.preventDefault();
+    const progress = currentProgress();
+    const scenario = createCustomScenario(els.customTopicTitle.value, effectiveAge(progress));
+    if (!scenario) return;
+    progress.customTopics.push(scenario);
+    progress.recentTopics = rememberTopic(progress.recentTopics, scenario.id, 5);
+    saveProgress();
+    els.customTopicTitle.value = "";
+    els.topicDialog.close();
+    renderStudent();
+  });
   if ("speechSynthesis" in window) window.speechSynthesis.addEventListener("voiceschanged", populateVoices);
   els.teacherForm.addEventListener("submit", event => {
     event.preventDefault();
     const progress = currentProgress();
     progress.notes.status = els.teacherStatus.value.trim();
     progress.notes.wishes = els.teacherWishes.value.trim();
+    const mentalAge = Number(els.mentalAge.value);
+    progress.mentalAge = els.mentalAge.value && mentalAge >= 2 && mentalAge <= 100 ? mentalAge : "";
     saveProgress();
     els.teacherSaveStatus.textContent = "Gemt på denne enhed ✓";
   });
@@ -518,6 +630,42 @@
     const delay = [1500, 1200, 900, 650, 450][clampLevel(currentProgress().levels.speed) - 1];
     setTimeout(() => { if (state.session) addMessage("ai", reply); }, delay);
   });
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.lang = "da-DK";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.onstart = () => {
+      els.speechButton.classList.add("listening");
+      els.speechButton.setAttribute("aria-pressed", "true");
+      els.speechStatus.textContent = "Lytter… tal nu";
+    };
+    recognition.onresult = event => {
+      els.chatInput.value = Array.from(event.results).map(result => result[0].transcript).join("");
+    };
+    recognition.onend = () => {
+      els.speechButton.classList.remove("listening");
+      els.speechButton.setAttribute("aria-pressed", "false");
+      els.speechStatus.textContent = els.chatInput.value
+        ? "Talen er skrevet i svarfeltet. Ret den eller tryk Send."
+        : "Tryk på mikrofonen for at svare med stemmen.";
+    };
+    recognition.onerror = event => {
+      const denied = event.error === "not-allowed" || event.error === "service-not-allowed";
+      els.speechStatus.textContent = denied
+        ? "Mikrofonen blev ikke tilladt. Du kan stadig skrive dit svar."
+        : "Talen kunne ikke genkendes. Prøv igen eller skriv svaret.";
+    };
+    els.speechButton.addEventListener("click", () => {
+      try { recognition.start(); } catch (_) { recognition.stop(); }
+    });
+  } else {
+    els.speechButton.disabled = true;
+    els.speechStatus.textContent = "Talegenkendelse understøttes ikke her. Du kan skrive svaret.";
+  }
   els.leaveConversation.addEventListener("click", () => {
     if (window.confirm("Vil du afslutte øvelsen før tid?")) finishConversation(false);
   });

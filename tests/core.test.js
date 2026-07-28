@@ -2,7 +2,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   FACTORS, STUDENTS, SCENARIOS, clampLevel, describeFactor,
-  calculateHero, createProgress, getInitiator, isConversationPassed, chooseReply
+  calculateHero, createProgress, chronologicalAge, effectiveAge, rememberTopic,
+  createCustomScenario, getInitiator, isConversationPassed, chooseReply
 } = require("../app.js");
 
 test("har fem fiktive elever med alle otte sværhedsfaktorer", () => {
@@ -61,4 +62,19 @@ test("en samtale kræver både fuld tid og løbende elevsvar", () => {
   assert.equal(isConversationPassed({ remaining: 0, duration: 60, turns: 2 }), true);
   assert.equal(isConversationPassed({ remaining: 0, duration: 300, turns: 9 }), false);
   assert.equal(isConversationPassed({ remaining: 0, duration: 300, turns: 10 }), true);
+});
+
+test("alder kan tilpasses med en skjult mental override", () => {
+  assert.equal(chronologicalAge(2016, 2026), 10);
+  assert.equal(chronologicalAge(3000, 2026), null);
+  assert.equal(effectiveAge({ birthYear: 2016, mentalAge: 7 }, 2026), 7);
+  assert.equal(effectiveAge({ birthYear: 2016, mentalAge: "" }, 2026), 10);
+});
+
+test("seneste emner begrænses til fem og nye emner kan oprettes", () => {
+  assert.deepEqual(rememberTopic(["a", "b", "c", "d", "e"], "c", 5), ["c", "a", "b", "d", "e"]);
+  assert.deepEqual(rememberTopic(["a", "b", "c", "d", "e"], "f", 5), ["f", "a", "b", "c", "d"]);
+  const scenario = createCustomScenario("Tage bussen", 8);
+  assert.equal(scenario.title, "Tage bussen");
+  assert.match(scenario.goal, /8 år/);
 });

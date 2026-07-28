@@ -94,6 +94,7 @@
           <span id="completed-count" class="completed-pill"></span>
         </div>
         <div id="scenario-grid" class="scenario-grid"></div>
+        <button id="show-all-topics" class="secondary-button wide-button" type="button">Se alle emner og tilføj et nyt</button>
       </section>
 
       <details class="settings">
@@ -102,6 +103,9 @@
           <label for="voice-select">AI-stemme</label>
           <select id="voice-select"></select>
           <button id="preview-voice" class="secondary-button" type="button">Hør stemmen</button>
+          <label for="birth-year">Dit fødselsår</label>
+          <input id="birth-year" type="number" inputmode="numeric" min="1926" max="2026" placeholder="Fx 2015">
+          <p id="student-age" class="hint"></p>
           <p class="hint">Stemmerne kommer fra denne telefon eller computer.</p>
         </div>
       </details>
@@ -119,6 +123,13 @@
       <div id="teacher-summary" class="teacher-summary"></div>
 
       <form id="teacher-form" class="teacher-form">
+        <label for="mental-age">
+          <strong>Alder til tilpasning</strong>
+          <span id="teacher-chronological-age"></span>
+          <span>Valgfri mental alder er kun synlig i lærerområdet og bruges til at tilpasse emner og samtaler.</span>
+        </label>
+        <input id="mental-age" type="number" inputmode="numeric" min="2" max="100" placeholder="Ingen override">
+
         <label for="teacher-status">
           <strong>Elevens status og fremgang</strong>
           <span>Notér observationer, succeser og næste mål.</span>
@@ -160,9 +171,11 @@
 
       <form id="chat-form" class="chat-form">
         <label class="sr-only" for="chat-input">Dit svar</label>
-        <textarea id="chat-input" rows="2" maxlength="280" placeholder="Skriv det, du vil sige…" required></textarea>
+        <textarea id="chat-input" rows="2" maxlength="280" placeholder="Skriv eller indtal det, du vil sige…" required></textarea>
+        <button id="speech-button" class="speech-button" type="button" aria-label="Indtal svar" aria-pressed="false">🎙️<span>Tal</span></button>
         <button class="primary-button" type="submit">Send</button>
       </form>
+      <p id="speech-status" class="speech-status" aria-live="polite">Tryk på mikrofonen for at svare med stemmen. Første gang bliver du bedt om tilladelse.</p>
       <div id="starter-help" class="starter-help">
         <span>Brug for hjælp?</span>
         <div id="reply-suggestions"></div>
@@ -177,6 +190,19 @@
       <div id="result-stats" class="result-stats"></div>
       <button id="result-home" class="primary-button" type="button">Tilbage til mine opgaver</button>
     </section>
+
+    <dialog id="topic-dialog" class="topic-dialog">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">Samtaleemner</p><h2>Alle emner</h2></div>
+        <button id="close-topics" class="secondary-button" type="button">Luk</button>
+      </div>
+      <div id="all-scenario-grid" class="scenario-grid"></div>
+      <form id="custom-topic-form" class="custom-topic-form">
+        <label for="custom-topic-title"><strong>Tilføj et nyt emne</strong></label>
+        <input id="custom-topic-title" maxlength="80" required placeholder="Fx spørg om en busbillet">
+        <button class="primary-button" type="submit">Tilføj emne</button>
+      </form>
+    </dialog>
   </main>
 
   <script src="app.js"></script>
