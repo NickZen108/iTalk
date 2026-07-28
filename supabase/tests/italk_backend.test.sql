@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(14);
 
 select has_table('public', 'schools', 'schools exists');
 select has_table('public', 'school_members', 'school_members exists');
@@ -19,6 +19,14 @@ select ok(
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.student_activities'::regclass),
   'student activities have RLS enabled'
+);
+select ok(
+  not has_table_privilege('anon', 'public.schools', 'select'),
+  'anonymous users cannot select schools'
+);
+select ok(
+  has_table_privilege('authenticated', 'public.schools', 'select'),
+  'authenticated users may select schools subject to RLS'
 );
 
 select is(

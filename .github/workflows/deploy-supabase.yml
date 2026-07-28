@@ -58,7 +58,7 @@ jobs:
       - name: Test hosted database and school isolation
         run: supabase test db --linked
 
-      - name: Verify public API exposes the migrated schema
+      - name: Verify schools endpoint exists and rejects anonymous access
         shell: bash
         run: |
           status="$(
@@ -67,13 +67,16 @@ jobs:
               "$SUPABASE_URL/rest/v1/schools?select=id&limit=1" \
               -H "apikey: $SUPABASE_PUBLISHABLE_KEY"
           )"
-          test "$status" = "200" || {
-            echo "::error::Elevspor schools endpoint returned HTTP $status"
+          test "$status" = "401" || {
+            echo "::error::Expected anonymous schools request to be denied with HTTP 401, got $status"
             jq -r '{code, message, hint}' /tmp/elevspor-schools-response.json
             exit 1
           }
-          jq -e 'type == "array"' /tmp/elevspor-schools-response.json >/dev/null
-          echo "Elevspor public.schools is available and protected by RLS."
+          jq -e '
+            .code == "42501"
+            and .message == "permission denied for table schools"
+          ' /tmp/elevspor-schools-response.json >/dev/null
+          echo "Elevspor public.schools exists in PostgREST and correctly rejects anonymous access."
 
       - uses: actions/setup-node@v4
         with:
