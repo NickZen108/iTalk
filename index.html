@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#315c54">
-  <meta name="description" content="iTalk – træning i hverdagssamtaler">
+  <meta name="description" content="Elevspor – træning i hverdagssamtaler">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg">
   <link rel="stylesheet" href="styles.css">
-  <title>iTalk – samtaletræning</title>
+  <title>Elevspor – samtaletræning</title>
 </head>
 <body>
   <a class="skip-link" href="#main">Gå til indhold</a>
@@ -18,7 +18,7 @@
   <header class="topbar">
     <button id="home-button" class="brand" type="button" aria-label="Gå til start">
       <span class="brand-mark" aria-hidden="true">•••</span>
-      <span>iTalk</span>
+      <span>Elevspor</span>
     </button>
     <div class="student-picker">
       <label for="student-select">Elev</label>
@@ -32,8 +32,30 @@
     <section id="welcome-view" class="view welcome">
       <p class="eyebrow">Samtaletræning i trygge rammer</p>
       <h1>Vælg en elev øverst</h1>
-      <p>iTalk husker fremskridt og indstillinger lokalt på denne enhed.</p>
-      <div class="privacy-note"><span aria-hidden="true">🔒</span> MVP uden API – ingen data sendes ud af appen.</div>
+      <p>Elevspor husker navn, foto, fremskridt og indstillinger lokalt på denne enhed.</p>
+      <div class="privacy-note"><span aria-hidden="true">🔒</span> Elevnavne, elevfotos og samtaleindhold sendes ikke til Supabase.</div>
+      <details class="settings school-access">
+        <summary>Skolens sikre login</summary>
+        <div class="settings-body">
+          <p id="school-session-status" class="hint" aria-live="polite">Kontrollerer forbindelse…</p>
+          <form id="school-login-form">
+            <label for="school-email">Arbejdsmail</label>
+            <input id="school-email" type="email" autocomplete="username" required>
+            <label for="school-password">Adgangskode</label>
+            <input id="school-password" type="password" autocomplete="current-password" minlength="10" required>
+            <div class="form-footer">
+              <button id="school-signup" class="secondary-button" type="button">Opret medarbejder</button>
+              <button class="primary-button" type="submit">Log ind</button>
+            </div>
+          </form>
+          <form id="school-onboarding-form" hidden>
+            <label for="school-name">Skolens navn</label>
+            <input id="school-name" maxlength="120" required>
+            <button class="primary-button" type="submit">Registrér skole</button>
+          </form>
+          <button id="school-signout" class="secondary-button" type="button" hidden>Log ud</button>
+        </div>
+      </details>
     </section>
 
     <section id="role-view" class="view" hidden>
@@ -200,6 +222,8 @@
     </dialog>
   </main>
 
+  <script src="runtime-config.js"></script>
+  <script src="supabase-client.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

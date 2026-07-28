@@ -1,6 +1,6 @@
 {
   "appId": "dk.italk.app",
-  "appName": "iTalk",
+  "appName": "Elevspor",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

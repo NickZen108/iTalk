@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { buildSync } = require("esbuild");
 
 const root = path.resolve(__dirname, "..");
 const dist = path.join(root, "dist");
@@ -20,4 +21,23 @@ for (const file of files) {
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.copyFileSync(source, target);
 }
-console.log(`iTalk bygget: ${path.relative(root, dist)}`);
+
+const runtimeConfig = {
+  supabaseUrl: process.env.SUPABASE_URL || "",
+  supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY || ""
+};
+fs.writeFileSync(
+  path.join(dist, "runtime-config.js"),
+  `globalThis.ELEVSPOR_CONFIG=${JSON.stringify(runtimeConfig)};\n`,
+  "utf8"
+);
+buildSync({
+  entryPoints: [path.join(root, "src", "supabase-client.js")],
+  outfile: path.join(dist, "supabase-client.js"),
+  bundle: true,
+  format: "iife",
+  platform: "browser",
+  minify: true,
+  sourcemap: false
+});
+console.log(`Elevspor bygget: ${path.relative(root, dist)}`);

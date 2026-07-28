@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">iTalk</string>
-    <string name="title_activity_main">iTalk</string>
+    <string name="app_name">Elevspor</string>
+    <string name="title_activity_main">Elevspor</string>
     <string name="package_name">dk.italk.app</string>
     <string name="custom_url_scheme">dk.italk.app</string>
 </resources>

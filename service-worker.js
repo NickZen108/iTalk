@@ -1,8 +1,10 @@
-const CACHE = "italk-v8";
+const CACHE = "elevspor-v9";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
+  "./runtime-config.js",
+  "./supabase-client.js",
   "./app.js",
   "./manifest.webmanifest",
   "./icons/icon.svg"
