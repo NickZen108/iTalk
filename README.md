@@ -31,6 +31,11 @@ bygges i `android/app/build/outputs/apk/debug/`.
 
 ## Privatliv
 
-MVP'en har ingen konto, annoncer, analyseværktøjer, API eller cloudlager.
-Elevdata, fremskridt og lærernoter gemmes kun lokalt. Tekst-til-tale bruger
+Den publicerede MVP har endnu ingen aktiv cloudforbindelse. Elevnavne,
+profilfotos, fremskridt og lærernoter gemmes lokalt. Tekst-til-tale bruger
 enhedens indbyggede oplæsningsfunktion.
+
+En Supabase-backend til en kommende skolepilot ligger som reproducerbare
+SQL-migrationer i `supabase/`. Den gemmer kun en anonym elevreference og
+aktivitet, isolerer skoler med Row Level Security og klargør månedlige
+opgørelser uden at sende mail. Se [docs/supabase-backend.md](docs/supabase-backend.md).
