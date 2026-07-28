@@ -1,0 +1,18 @@
+{
+  "name": "iTalk – min stemme",
+  "short_name": "iTalk",
+  "description": "En rolig, dansk kommunikationsapp",
+  "lang": "da",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f7f8f5",
+  "theme_color": "#315c54",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

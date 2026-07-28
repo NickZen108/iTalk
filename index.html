@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#315c54">
+  <meta name="description" content="iTalk – en rolig kommunikationsapp">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <title>iTalk – min stemme</title>
+</head>
+<body>
+  <a class="skip-link" href="#cards">Gå til kommunikationskort</a>
+  <header class="topbar">
+    <div class="brand" aria-label="iTalk">
+      <span class="brand-mark" aria-hidden="true">•••</span>
+      <span>iTalk</span>
+    </div>
+    <button id="calm-toggle" class="icon-button" type="button" aria-pressed="false">
+      <span aria-hidden="true">◐</span><span>Rolig</span>
+    </button>
+  </header>
+
+  <main>
+    <section class="composer" aria-labelledby="composer-title">
+      <h1 id="composer-title">Hvad vil du sige?</h1>
+      <div class="message-row">
+        <label class="sr-only" for="message">Skriv din besked</label>
+        <textarea id="message" rows="2" maxlength="240" placeholder="Skriv eller vælg kort nedenfor…"></textarea>
+        <button id="speak-message" class="speak-button" type="button">
+          <span aria-hidden="true">▶</span><span>Sig det</span>
+        </button>
+      </div>
+      <div class="message-actions">
+        <button id="clear-message" class="text-button" type="button">Ryd besked</button>
+        <p id="speech-status" class="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <nav id="categories" class="categories" aria-label="Kategorier"></nav>
+
+    <section aria-labelledby="cards-title">
+      <div class="section-heading">
+        <h2 id="cards-title">Hurtige beskeder</h2>
+        <button id="open-add" class="secondary-button" type="button">+ Nyt kort</button>
+      </div>
+      <div id="cards" class="card-grid" role="list"></div>
+      <p id="empty-state" class="empty" hidden>Der er ingen kort i denne kategori endnu.</p>
+    </section>
+  </main>
+
+  <dialog id="add-dialog">
+    <form id="add-form" method="dialog">
+      <div class="dialog-heading">
+        <h2>Lav dit eget kort</h2>
+        <button id="close-add" class="close-button" type="button" aria-label="Luk">×</button>
+      </div>
+      <label for="card-text">Hvad skal kortet sige?</label>
+      <input id="card-text" name="text" maxlength="80" required autocomplete="off">
+      <label for="card-symbol">Symbol eller emoji</label>
+      <input id="card-symbol" name="symbol" maxlength="4" placeholder="💬" autocomplete="off">
+      <label for="card-category">Kategori</label>
+      <select id="card-category" name="category"></select>
+      <div class="dialog-actions">
+        <button id="cancel-add" class="text-button" type="button">Annuller</button>
+        <button class="primary-button" type="submit">Gem kort</button>
+      </div>
+    </form>
+  </dialog>
+
+  <template id="card-template">
+    <article class="phrase-card" role="listitem">
+      <button class="card-main" type="button">
+        <span class="card-symbol" aria-hidden="true"></span>
+        <span class="card-text"></span>
+      </button>
+      <button class="delete-card" type="button" aria-label="Slet kort" hidden>×</button>
+    </article>
+  </template>
+  <script src="app.js"></script>
+</body>
+</html>
