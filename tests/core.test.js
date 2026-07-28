@@ -12,6 +12,9 @@ test("viser seneste udgivelsesdato og tidspunkt øverst", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   assert.match(html, /Senest opdateret:/);
   assert.match(html, /<time datetime="[^"]+">[^<]+kl\.[^<]+<\/time>/);
+  const buildScript = fs.readFileSync(path.join(__dirname, "..", "scripts", "build.js"), "utf8");
+  assert.match(buildScript, /Europe\/Copenhagen/);
+  assert.match(buildScript, /stampedIndex/);
 });
 
 test("offline-cache henter publicerede opdateringer fra nettet først", () => {

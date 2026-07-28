@@ -22,6 +22,49 @@ for (const file of files) {
   fs.copyFileSync(source, target);
 }
 
+// The visible timestamp must describe the artifact being published, not the
+// last time index.html happened to be edited.
+const publishedAt = new Date();
+const dateTime = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: "Europe/Copenhagen",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false
+}).formatToParts(publishedAt).reduce((parts, part) => {
+  parts[part.type] = part.value;
+  return parts;
+}, {});
+const offsetName = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Copenhagen",
+  timeZoneName: "longOffset"
+}).formatToParts(publishedAt).find(part => part.type === "timeZoneName")?.value;
+const offsetMatch = offsetName?.match(/GMT([+-])(\d{2}):(\d{2})/);
+if (!offsetMatch) throw new Error("Kunne ikke beregne dansk tidszone");
+const isoOffset = `${offsetMatch[1]}${offsetMatch[2]}:${offsetMatch[3]}`;
+const machineTimestamp =
+  `${dateTime.year}-${dateTime.month}-${dateTime.day}T${dateTime.hour}:${dateTime.minute}:${dateTime.second}${isoOffset}`;
+const danishTimestamp = new Intl.DateTimeFormat("da-DK", {
+  timeZone: "Europe/Copenhagen",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false
+}).format(publishedAt).replace(" kl. ", " kl. ").replace(":", ".");
+const builtIndexPath = path.join(dist, "index.html");
+const builtIndex = fs.readFileSync(builtIndexPath, "utf8");
+const stampedIndex = builtIndex.replace(
+  /<time datetime="[^"]+">[^<]+<\/time>/,
+  `<time datetime="${machineTimestamp}">${danishTimestamp}</time>`
+);
+if (stampedIndex === builtIndex) throw new Error("Kunne ikke opdatere udgivelsestidspunktet");
+fs.writeFileSync(builtIndexPath, stampedIndex, "utf8");
+
 const runtimeConfig = {
   supabaseUrl: process.env.SUPABASE_URL || "",
   supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY || ""
