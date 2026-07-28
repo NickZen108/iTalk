@@ -706,6 +706,11 @@
   else showView("welcome");
 
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(() => {}));
+    window.addEventListener("load", async () => {
+      try {
+        const registration = await navigator.serviceWorker.register("./service-worker.js");
+        await registration.update();
+      } catch (_) {}
+    });
   }
 })(typeof globalThis !== "undefined" ? globalThis : this);

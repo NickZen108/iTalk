@@ -14,6 +14,12 @@ test("viser seneste udgivelsesdato og tidspunkt øverst", () => {
   assert.match(html, /<time datetime="[^"]+">[^<]+kl\.[^<]+<\/time>/);
 });
 
+test("offline-cache henter publicerede opdateringer fra nettet først", () => {
+  const worker = fs.readFileSync(path.join(__dirname, "..", "service-worker.js"), "utf8");
+  assert.match(worker, /fetch\(event\.request, \{ cache: "no-cache" \}\)/);
+  assert.doesNotMatch(worker, /cached \|\| fetch/);
+});
+
 test("har fem fiktive elever med alle otte sværhedsfaktorer", () => {
   assert.equal(STUDENTS.length, 5);
   assert.equal(FACTORS.length, 8);
