@@ -109,3 +109,18 @@ test("CI kører web-, database- og RLS-testpakken før merge", () => {
   assert.match(workflow, /supabase test db/);
   assert.ok(fs.existsSync(path.join(root, "supabase/tests/rls_isolation.test.sql")));
 });
+
+test("hostede migrationer bruger kun GitHub-secrets med nødvendige rettigheder", () => {
+  const workflow = fs.readFileSync(
+    path.join(root, ".github/workflows/deploy-supabase.yml"),
+    "utf8"
+  );
+  assert.match(workflow, /secrets\.SUPABASE_ACCESS_TOKEN/);
+  assert.match(workflow, /secrets\.SUPABASE_DB_PASSWORD/);
+  assert.match(workflow, /vars\.SUPABASE_PROJECT_REF/);
+  assert.match(workflow, /supabase db push --linked/);
+  assert.match(workflow, /supabase test db --linked/);
+  assert.match(workflow, /SUPABASE_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(workflow, /secrets\.(?:SERVICE_ROLE|SUPABASE_SECRET)/i);
+  assert.doesNotMatch(workflow, /set -x/);
+});
