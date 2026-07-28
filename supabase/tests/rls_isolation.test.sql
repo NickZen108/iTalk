@@ -31,8 +31,12 @@ select is((select name from public.schools), 'Skole A', 'school A member sees on
 select is((select count(*) from public.students), 1::bigint, 'school A member sees one student');
 select is((select local_reference_hash from public.students), repeat('a', 64), 'school A member cannot read school B student');
 
-select throws_ok(
-  $$update public.students set birth_year = 2014 where id = 'b1000000-0000-0000-0000-000000000002'$$,
+update public.students
+set birth_year = 2014
+where id = 'b1000000-0000-0000-0000-000000000002';
+select is(
+  (select count(*) from public.students where birth_year = 2014),
+  0::bigint,
   'school A member cannot update school B student'
 );
 select throws_ok(

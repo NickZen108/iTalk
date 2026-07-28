@@ -438,6 +438,26 @@ alter table public.billing_settings enable row level security;
 alter table public.monthly_report_runs enable row level security;
 alter table public.report_outbox enable row level security;
 
+revoke all on table
+  public.schools,
+  public.school_members,
+  public.school_invitations,
+  public.students,
+  public.student_activities,
+  public.billing_settings,
+  public.monthly_report_runs,
+  public.report_outbox
+from anon, authenticated;
+
+grant select, update on public.schools to authenticated;
+grant select, update, delete on public.school_members to authenticated;
+grant select, delete on public.school_invitations to authenticated;
+grant select, insert, update, delete on public.students to authenticated;
+grant select, insert on public.student_activities to authenticated;
+grant select on public.billing_settings to authenticated;
+grant select on public.monthly_report_runs to authenticated;
+grant usage, select on sequence public.student_activities_id_seq to authenticated;
+
 create policy schools_select_own on public.schools
 for select to authenticated using (public.is_school_member(id));
 create policy schools_admin_update on public.schools
