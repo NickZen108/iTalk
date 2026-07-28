@@ -114,3 +114,14 @@ test("seneste emner begrænses til fem og nye emner kan oprettes", () => {
   assert.equal(scenario.title, "Tage bussen");
   assert.match(scenario.goal, /8 år/);
 });
+
+test("forsiden har ingen åben elevvælger og elever oprettes i lærerområdet", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.doesNotMatch(html, /id="student-select"/);
+  assert.doesNotMatch(html, /Vælg en elev øverst/);
+  assert.match(html, /id="school-dashboard-view"/);
+  assert.match(html, /id="create-student-form"/);
+  assert.match(app, /renderSchoolDashboard/);
+  assert.match(app, /Opretter sikker elevtilmelding/);
+});
