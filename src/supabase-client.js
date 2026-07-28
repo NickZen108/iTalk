@@ -84,8 +84,21 @@ async function ensureStudent(localId, birthYear) {
   const { data, error } = await supabase
     .from("students")
     .upsert(payload, { onConflict: "school_id,local_reference_hash" })
-    .select("id,school_id,last_activity_at")
+    .select("id,school_id,last_activity_at,approval_status,approval_requested_at,approved_at")
     .single();
+  if (error) throw error;
+  return data;
+}
+
+async function getStudentApproval(localId, birthYear) {
+  return ensureStudent(localId, birthYear);
+}
+
+async function approveStudent(studentId) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("approve_student", {
+    target_student_id: studentId
+  });
   if (error) throw error;
   return data;
 }
@@ -95,6 +108,11 @@ async function recordActivity(localId, activityType, durationSeconds, birthYear)
   const session = await getSession();
   if (!session) return null;
   const student = await ensureStudent(localId, birthYear);
+  if (student.approval_status !== "approved") {
+    const error = new Error("Eleven afventer lærerens godkendelse.");
+    error.code = "STUDENT_APPROVAL_REQUIRED";
+    throw error;
+  }
   const { data, error } = await supabase
     .from("student_activities")
     .insert({
@@ -129,6 +147,8 @@ globalThis.ElevsporSupabase = {
   registerSchool,
   getMembership,
   ensureStudent,
+  getStudentApproval,
+  approveStudent,
   recordActivity,
   monthlyUsage,
   hashLocalReference
