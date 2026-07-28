@@ -42,6 +42,8 @@ select is(
 select throws_ok(
   $$insert into public.student_activities (school_id, student_id, activity_type, created_by)
     values ('a0000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000002', 'conversation_started', '10000000-0000-0000-0000-000000000001')$$,
+  '42501',
+  'new row violates row-level security policy for table "student_activities"',
   'cross-school activity is rejected'
 );
 
