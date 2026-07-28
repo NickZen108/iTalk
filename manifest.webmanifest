@@ -1,7 +1,7 @@
 {
-  "name": "iTalk – min stemme",
+  "name": "iTalk – samtaletræning",
   "short_name": "iTalk",
-  "description": "En rolig, dansk kommunikationsapp",
+  "description": "Tryg træning i hverdagssamtaler",
   "lang": "da",
   "start_url": "./",
   "display": "standalone",

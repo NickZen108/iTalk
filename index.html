@@ -4,80 +4,181 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#315c54">
-  <meta name="description" content="iTalk – en rolig kommunikationsapp">
+  <meta name="description" content="iTalk – træning i hverdagssamtaler">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg">
   <link rel="stylesheet" href="styles.css">
-  <title>iTalk – min stemme</title>
+  <title>iTalk – samtaletræning</title>
 </head>
 <body>
-  <a class="skip-link" href="#cards">Gå til kommunikationskort</a>
+  <a class="skip-link" href="#main">Gå til indhold</a>
   <header class="topbar">
-    <div class="brand" aria-label="iTalk">
+    <button id="home-button" class="brand" type="button" aria-label="Gå til start">
       <span class="brand-mark" aria-hidden="true">•••</span>
       <span>iTalk</span>
-    </div>
-    <button id="calm-toggle" class="icon-button" type="button" aria-pressed="false">
-      <span aria-hidden="true">◐</span><span>Rolig</span>
     </button>
+    <div class="student-picker">
+      <label for="student-select">Elev</label>
+      <select id="student-select">
+        <option value="">Vælg elev…</option>
+      </select>
+    </div>
   </header>
 
-  <main>
-    <section class="composer" aria-labelledby="composer-title">
-      <h1 id="composer-title">Hvad vil du sige?</h1>
-      <div class="message-row">
-        <label class="sr-only" for="message">Skriv din besked</label>
-        <textarea id="message" rows="2" maxlength="240" placeholder="Skriv eller vælg kort nedenfor…"></textarea>
-        <button id="speak-message" class="speak-button" type="button">
-          <span aria-hidden="true">▶</span><span>Sig det</span>
+  <main id="main">
+    <section id="welcome-view" class="view welcome">
+      <p class="eyebrow">Samtaletræning i trygge rammer</p>
+      <h1>Vælg en elev øverst</h1>
+      <p>iTalk husker fremskridt og indstillinger lokalt på denne enhed.</p>
+      <div class="privacy-note"><span aria-hidden="true">🔒</span> MVP uden API – ingen data sendes ud af appen.</div>
+    </section>
+
+    <section id="role-view" class="view" hidden>
+      <button class="back-button" type="button" data-back="welcome">← Skift elev</button>
+      <p class="eyebrow">Du har valgt <span id="role-student-name"></span></p>
+      <h1>Hvem bruger appen?</h1>
+      <div class="role-grid">
+        <button id="choose-student" class="role-card" type="button">
+          <span class="role-icon" aria-hidden="true">🎯</span>
+          <strong>Jeg er elev</strong>
+          <span>Se dine fremskridt og øv samtaler</span>
         </button>
-      </div>
-      <div class="message-actions">
-        <button id="clear-message" class="text-button" type="button">Ryd besked</button>
-        <p id="speech-status" class="status" aria-live="polite"></p>
+        <button id="choose-teacher" class="role-card teacher" type="button">
+          <span class="role-icon" aria-hidden="true">📝</span>
+          <strong>Jeg er lærer</strong>
+          <span>Se status og tilpas træningen</span>
+        </button>
       </div>
     </section>
 
-    <nav id="categories" class="categories" aria-label="Kategorier"></nav>
-
-    <section aria-labelledby="cards-title">
-      <div class="section-heading">
-        <h2 id="cards-title">Hurtige beskeder</h2>
-        <button id="open-add" class="secondary-button" type="button">+ Nyt kort</button>
+    <section id="student-view" class="view" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">Elevområde</p>
+          <h1>Hej <span id="student-name"></span>!</h1>
+        </div>
+        <button class="secondary-button" type="button" data-back="role">Skift rolle</button>
       </div>
-      <div id="cards" class="card-grid" role="list"></div>
-      <p id="empty-state" class="empty" hidden>Der er ingen kort i denne kategori endnu.</p>
+
+      <section class="hero-panel" aria-labelledby="hero-title">
+        <div class="hero-score">
+          <div>
+            <span class="hero-label" id="hero-title">Hero-score</span>
+            <strong id="hero-score">0</strong><span>/100</span>
+          </div>
+          <span class="hero-badge" aria-hidden="true">⚡</span>
+        </div>
+        <div class="progress-track hero-track" role="progressbar" aria-label="Hero-score" aria-valuemin="0" aria-valuemax="100">
+          <span id="hero-progress"></span>
+        </div>
+        <p id="hero-message" class="hero-message"></p>
+      </section>
+
+      <section aria-labelledby="skills-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Din nuværende sværhedsgrad</p>
+            <h2 id="skills-title">Det træner du lige nu</h2>
+          </div>
+          <button id="toggle-details" class="text-button" type="button" aria-expanded="true">Skjul detaljer</button>
+        </div>
+        <div id="skill-grid" class="skill-grid"></div>
+      </section>
+
+      <section class="task-section" aria-labelledby="tasks-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Vælg en opgave</p>
+            <h2 id="tasks-title">Træn en hverdagssamtale</h2>
+          </div>
+          <span id="completed-count" class="completed-pill"></span>
+        </div>
+        <div id="scenario-grid" class="scenario-grid"></div>
+      </section>
+
+      <details class="settings">
+        <summary>Indstillinger</summary>
+        <div class="settings-body">
+          <label for="voice-select">AI-stemme</label>
+          <select id="voice-select"></select>
+          <button id="preview-voice" class="secondary-button" type="button">Hør stemmen</button>
+          <p class="hint">Stemmerne kommer fra denne telefon eller computer.</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="teacher-view" class="view" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">Lærerområde · <span id="teacher-student-name"></span></p>
+          <h1>Status og tilpasning</h1>
+        </div>
+        <button class="secondary-button" type="button" data-back="role">Skift rolle</button>
+      </div>
+
+      <div id="teacher-summary" class="teacher-summary"></div>
+
+      <form id="teacher-form" class="teacher-form">
+        <label for="teacher-status">
+          <strong>Elevens status og fremgang</strong>
+          <span>Notér observationer, succeser og næste mål.</span>
+        </label>
+        <textarea id="teacher-status" rows="7" maxlength="2000" placeholder="Eksempel: Tager nu selv initiativ i kendte situationer…"></textarea>
+
+        <label for="teacher-wishes">
+          <strong>Særlige ønsker til AI’ens adfærd</strong>
+          <span>Disse ønsker gemmes til den senere API-version.</span>
+        </label>
+        <textarea id="teacher-wishes" rows="7" maxlength="2000" placeholder="Eksempel: Giv god svartid, brug korte sætninger og undgå ironi…"></textarea>
+        <div class="form-footer">
+          <p id="teacher-save-status" class="save-status" aria-live="polite"></p>
+          <button class="primary-button" type="submit">Gem lærerens noter</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="conversation-view" class="view" hidden>
+      <div class="conversation-top">
+        <button id="leave-conversation" class="secondary-button" type="button">← Afslut</button>
+        <div class="timer" aria-live="polite">
+          <span aria-hidden="true">⏱</span>
+          <strong id="timer">01:00</strong>
+        </div>
+      </div>
+
+      <div class="conversation-heading">
+        <span id="conversation-icon" class="scenario-icon" aria-hidden="true"></span>
+        <div>
+          <p class="eyebrow">Samtaleøvelse</p>
+          <h1 id="conversation-title"></h1>
+          <p id="conversation-goal"></p>
+        </div>
+      </div>
+
+      <div id="active-factors" class="active-factors" aria-label="Aktuelle sværhedsgrader"></div>
+      <div id="chat-log" class="chat-log" aria-live="polite" aria-label="Samtale"></div>
+
+      <form id="chat-form" class="chat-form">
+        <label class="sr-only" for="chat-input">Dit svar</label>
+        <textarea id="chat-input" rows="2" maxlength="280" placeholder="Skriv det, du vil sige…" required></textarea>
+        <button class="primary-button" type="submit">Send</button>
+      </form>
+      <div id="starter-help" class="starter-help">
+        <span>Brug for hjælp?</span>
+        <div id="reply-suggestions"></div>
+      </div>
+    </section>
+
+    <section id="result-view" class="view result-view" hidden>
+      <div id="result-icon" class="result-icon" aria-hidden="true">🏆</div>
+      <p class="eyebrow">Øvelse afsluttet</p>
+      <h1 id="result-title"></h1>
+      <p id="result-message"></p>
+      <div id="result-stats" class="result-stats"></div>
+      <button id="result-home" class="primary-button" type="button">Tilbage til mine opgaver</button>
     </section>
   </main>
 
-  <dialog id="add-dialog">
-    <form id="add-form" method="dialog">
-      <div class="dialog-heading">
-        <h2>Lav dit eget kort</h2>
-        <button id="close-add" class="close-button" type="button" aria-label="Luk">×</button>
-      </div>
-      <label for="card-text">Hvad skal kortet sige?</label>
-      <input id="card-text" name="text" maxlength="80" required autocomplete="off">
-      <label for="card-symbol">Symbol eller emoji</label>
-      <input id="card-symbol" name="symbol" maxlength="4" placeholder="💬" autocomplete="off">
-      <label for="card-category">Kategori</label>
-      <select id="card-category" name="category"></select>
-      <div class="dialog-actions">
-        <button id="cancel-add" class="text-button" type="button">Annuller</button>
-        <button class="primary-button" type="submit">Gem kort</button>
-      </div>
-    </form>
-  </dialog>
-
-  <template id="card-template">
-    <article class="phrase-card" role="listitem">
-      <button class="card-main" type="button">
-        <span class="card-symbol" aria-hidden="true"></span>
-        <span class="card-text"></span>
-      </button>
-      <button class="delete-card" type="button" aria-label="Slet kort" hidden>×</button>
-    </article>
-  </template>
   <script src="app.js"></script>
 </body>
 </html>

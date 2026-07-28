@@ -1,17 +1,21 @@
 # iTalk
 
-iTalk er en selvstændig, dansk kommunikationsapp til autistiske mennesker og
-andre, som har gavn af alternativ og supplerende kommunikation (AAC).
+iTalk er en selvstændig, dansk træningsapp, der hjælper autistiske elever med
+at øve hverdagssamtaler i trygge og gradvist sværere rammer.
 
-## Første version
+## MVP uden API
 
-- Trykbare kommunikationskort med dansk oplæsning
-- Kategorier for hurtige behov, følelser, mad og aktiviteter
-- Skriv en valgfri besked og få den læst højt
-- Tilføj og slet egne kort
-- Gemmer tilpasninger lokalt på enheden
-- Rolig tilstand med færre elementer og reducerede animationer
-- Offline PWA og selvstændig Android-app
+- Fem fiktive elevprofiler med lokale fremskridt
+- Separat elev- og lærermodul
+- Otte sværhedsfaktorer på fem niveauer
+- Faktorbaserede progressionsbjælker og samlet Hero-score
+- Fem scenarier: leg, vejvisning, tøjbutik, café og gruppeaktivitet
+- Valg mellem AI- eller elevinitiativ ud fra elevens aktuelle niveau
+- Lokal, regelbaseret samtalesimulator med forslag til svar
+- Samtaler på 1–5 minutter, der bestås ved fuld gennemførelse
+- Valg af dansk AI-stemme fra enhedens installerede stemmer
+- Lærernoter om status, fremgang og ønsket AI-adfærd
+- Lokal lagring, offline PWA og selvstændig Android-app
 
 ## Udvikling
 
@@ -27,6 +31,6 @@ bygges i `android/app/build/outputs/apk/debug/`.
 
 ## Privatliv
 
-MVP'en har ingen konto, annoncer, analyseværktøjer eller cloudlager. Kort og
-indstillinger gemmes kun lokalt. Tekst-til-tale bruger enhedens indbyggede
-oplæsningsfunktion.
+MVP'en har ingen konto, annoncer, analyseværktøjer, API eller cloudlager.
+Elevdata, fremskridt og lærernoter gemmes kun lokalt. Tekst-til-tale bruger
+enhedens indbyggede oplæsningsfunktion.
