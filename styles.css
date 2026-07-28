@@ -115,6 +115,15 @@ p { overflow-wrap: anywhere; }
 .settings-body label, .settings-body .hint { grid-column: 1/-1; }
 .settings-body .hint { margin: 0; color: var(--muted); font-size: .83rem; }
 .wide-button { width: 100%; margin-top: .8rem; }
+.setup-intro { padding: .8rem 1rem; border-radius: 14px; background: var(--accent); color: var(--brand-dark); }
+.factor-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .8rem; margin: 1rem 0; }
+.factor-control { display: flex; gap: .75rem; padding: 1rem; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+.factor-copy { flex: 1; min-width: 0; }
+.factor-heading { display: flex; justify-content: space-between; gap: .5rem; }
+.factor-heading > span { color: var(--muted); font-size: .8rem; font-weight: 750; white-space: nowrap; }
+.factor-control input { width: 100%; margin: .75rem 0 .35rem; padding: 0; accent-color: var(--brand); }
+.factor-description { display: block; color: var(--muted); font-size: .84rem; }
+.factor-record { display: inline-block; margin-top: .45rem; padding: .2rem .5rem; border-radius: 999px; background: var(--accent); color: var(--brand-dark); font-size: .78rem; font-weight: 800; }
 
 .teacher-summary { display: grid; grid-template-columns: 2fr repeat(3,1fr); gap: .75rem; margin-bottom: 1rem; }
 .teacher-summary > div { padding: 1rem; border: 1px solid var(--line); border-radius: 17px; background: var(--surface); }
@@ -167,7 +176,7 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
   .topbar { align-items: flex-end; }
   .student-picker { flex-direction: column; align-items: flex-start; gap: .1rem; }
   .student-picker label { font-size: .72rem; }
-  .role-grid, .scenario-grid, .skill-grid { grid-template-columns: 1fr; }
+  .role-grid, .scenario-grid, .skill-grid, .factor-controls { grid-template-columns: 1fr; }
   .role-card { min-height: 180px; }
   .teacher-summary { grid-template-columns: repeat(3,1fr); }
   .teacher-summary > div:first-child { grid-column: 1/-1; }

@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   FACTORS, STUDENTS, SCENARIOS, clampLevel, describeFactor,
-  calculateHero, createProgress, chronologicalAge, effectiveAge, rememberTopic,
+  defaultLevels, topicProgress, updateRecords, createProgress, chronologicalAge, effectiveAge, rememberTopic,
   createCustomScenario, getInitiator, isConversationPassed, chooseReply
 } = require("../app.js");
 const fs = require("node:fs");
@@ -41,18 +41,23 @@ test("sværhedsgrader begrænses og beskrives fra 1 til 5", () => {
   assert.match(describeFactor("duration", 5), /5 minutter/);
 });
 
-test("Hero-score kombinerer faktorniveauer og beståede opgaver", () => {
-  const low = Object.fromEntries(FACTORS.map(factor => [factor.id, 1]));
-  const high = Object.fromEntries(FACTORS.map(factor => [factor.id, 5]));
-  assert.equal(calculateHero(low, 0), 18);
-  assert.equal(calculateHero(high, 9), 100);
-  assert.ok(calculateHero(low, 3) > calculateHero(low, 0));
+test("hvert samtaleemne starter på trin 1 og har egne rekorder", () => {
+  const progress = createProgress(STUDENTS[0]);
+  const play = topicProgress(progress, "play");
+  assert.deepEqual(play.levels, defaultLevels());
+  assert.deepEqual(play.records, defaultLevels());
+  play.levels.speed = 4;
+  play.records = updateRecords(play.records, play.levels);
+  assert.equal(play.records.speed, 4);
+  play.levels.speed = 2;
+  assert.equal(play.levels.speed, 2);
+  assert.equal(play.records.speed, 4);
+  assert.equal(topicProgress(progress, "cafe").levels.speed, 1);
 });
 
 test("ny elevprogression kopierer profil og holder noter lokalt", () => {
   const progress = createProgress(STUDENTS[0]);
-  assert.deepEqual(progress.levels, STUDENTS[0].levels);
-  assert.notEqual(progress.levels, STUDENTS[0].levels);
+  assert.deepEqual(progress.topicProgress, {});
   assert.deepEqual(progress.notes, { status: "", wishes: "" });
 });
 

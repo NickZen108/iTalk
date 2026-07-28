@@ -13,7 +13,7 @@
 <body>
   <a class="skip-link" href="#main">Gå til indhold</a>
   <div class="update-stamp" role="status">
-    Senest opdateret: <time datetime="2026-07-28T10:11:24+02:00">28. juli 2026 kl. 10.11</time>
+    Senest opdateret: <time datetime="2026-07-28T10:32:11+02:00">28. juli 2026 kl. 10.32</time>
   </div>
   <header class="topbar">
     <button id="home-button" class="brand" type="button" aria-label="Gå til start">
@@ -63,31 +63,6 @@
         <button class="secondary-button" type="button" data-back="role">Skift rolle</button>
       </div>
 
-      <section class="hero-panel" aria-labelledby="hero-title">
-        <div class="hero-score">
-          <div>
-            <span class="hero-label" id="hero-title">Hero-score</span>
-            <strong id="hero-score">0</strong><span>/100</span>
-          </div>
-          <span class="hero-badge" aria-hidden="true">⚡</span>
-        </div>
-        <div class="progress-track hero-track" role="progressbar" aria-label="Hero-score" aria-valuemin="0" aria-valuemax="100">
-          <span id="hero-progress"></span>
-        </div>
-        <p id="hero-message" class="hero-message"></p>
-      </section>
-
-      <section aria-labelledby="skills-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Din nuværende sværhedsgrad</p>
-            <h2 id="skills-title">Det træner du lige nu</h2>
-          </div>
-          <button id="toggle-details" class="text-button" type="button" aria-expanded="true">Skjul detaljer</button>
-        </div>
-        <div id="skill-grid" class="skill-grid"></div>
-      </section>
-
       <section class="task-section" aria-labelledby="tasks-title">
         <div class="section-heading">
           <div>
@@ -112,6 +87,23 @@
           <p class="hint">Stemmerne kommer fra denne telefon eller computer.</p>
         </div>
       </details>
+    </section>
+
+    <section id="scenario-setup-view" class="view" hidden>
+      <div class="page-heading">
+        <button id="cancel-scenario-setup" class="secondary-button" type="button">← Tilbage</button>
+      </div>
+      <div class="conversation-heading">
+        <span id="setup-scenario-icon" class="scenario-icon" aria-hidden="true"></span>
+        <div>
+          <p class="eyebrow">Vælg sværhedsgrader</p>
+          <h1 id="setup-scenario-title"></h1>
+          <p id="setup-scenario-goal"></p>
+        </div>
+      </div>
+      <p class="setup-intro">Du bestemmer selv niveauet for denne samtale. Din rekord viser det højeste niveau, du tidligere har bestået.</p>
+      <div id="scenario-factor-grid" class="factor-controls"></div>
+      <button id="begin-conversation" class="primary-button wide-button" type="button">Start samtalen</button>
     </section>
 
     <section id="teacher-view" class="view" hidden>

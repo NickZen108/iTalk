@@ -127,16 +127,35 @@
     return descriptions[id][n - 1];
   }
 
-  function calculateHero(levels, completedCount) {
-    const values = FACTORS.map(factor => clampLevel(levels[factor.id]));
-    const mastery = values.reduce((sum, value) => sum + value, 0) / (values.length * 5);
-    const practiceBonus = Math.min(10, Math.max(0, Number(completedCount) || 0) * 2);
-    return Math.min(100, Math.round(mastery * 90 + practiceBonus));
+  function defaultLevels() {
+    return Object.fromEntries(FACTORS.map(factor => [factor.id, 1]));
+  }
+
+  function topicProgress(progress, scenarioId) {
+    if (!progress.topicProgress || typeof progress.topicProgress !== "object") progress.topicProgress = {};
+    if (!progress.topicProgress[scenarioId]) {
+      progress.topicProgress[scenarioId] = { levels: defaultLevels(), records: defaultLevels() };
+    }
+    const topic = progress.topicProgress[scenarioId];
+    topic.levels = Object.assign(defaultLevels(), topic.levels || {});
+    topic.records = Object.assign(defaultLevels(), topic.records || {});
+    FACTORS.forEach(factor => {
+      topic.levels[factor.id] = clampLevel(topic.levels[factor.id]);
+      topic.records[factor.id] = clampLevel(topic.records[factor.id]);
+    });
+    return topic;
+  }
+
+  function updateRecords(records, levels) {
+    const next = Object.assign(defaultLevels(), records || {});
+    FACTORS.forEach(factor => {
+      next[factor.id] = Math.max(clampLevel(next[factor.id]), clampLevel(levels[factor.id]));
+    });
+    return next;
   }
 
   function createProgress(student) {
     return {
-      levels: Object.assign({}, student.levels),
       completed: [],
       attempts: 0,
       voice: "",
@@ -144,6 +163,7 @@
       mentalAge: "",
       recentTopics: SCENARIOS.map(item => item.id),
       customTopics: [],
+      topicProgress: {},
       notes: { status: "", wishes: "" }
     };
   }
@@ -201,7 +221,7 @@
 
   const api = {
     FACTORS, STUDENTS, SCENARIOS, clampLevel, describeFactor,
-    calculateHero, createProgress, chronologicalAge, effectiveAge, rememberTopic,
+    defaultLevels, topicProgress, updateRecords, createProgress, chronologicalAge, effectiveAge, rememberTopic,
     createCustomScenario, getInitiator, isConversationPassed, chooseReply
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -238,11 +258,6 @@
     teacherName: $("#teacher-student-name"),
     chooseStudent: $("#choose-student"),
     chooseTeacher: $("#choose-teacher"),
-    heroScore: $("#hero-score"),
-    heroProgress: $("#hero-progress"),
-    heroMessage: $("#hero-message"),
-    skillGrid: $("#skill-grid"),
-    toggleDetails: $("#toggle-details"),
     scenarioGrid: $("#scenario-grid"),
     completedCount: $("#completed-count"),
     voiceSelect: $("#voice-select"),
@@ -280,6 +295,14 @@
     resultStats: $("#result-stats"),
     resultHome: $("#result-home")
   };
+  Object.assign(els, {
+    setupIcon: $("#setup-scenario-icon"),
+    setupTitle: $("#setup-scenario-title"),
+    setupGoal: $("#setup-scenario-goal"),
+    factorGrid: $("#scenario-factor-grid"),
+    cancelSetup: $("#cancel-scenario-setup"),
+    beginConversation: $("#begin-conversation")
+  });
 
   function currentStudent() {
     return STUDENTS.find(student => student.id === state.studentId);
@@ -294,6 +317,7 @@
     if (!Array.isArray(progress.customTopics)) progress.customTopics = [];
     if (progress.birthYear === undefined) progress.birthYear = "";
     if (progress.mentalAge === undefined) progress.mentalAge = "";
+    if (!progress.topicProgress || typeof progress.topicProgress !== "object") progress.topicProgress = {};
     return progress;
   }
 
@@ -338,31 +362,6 @@
     const student = currentStudent();
     const progress = currentProgress();
     els.studentName.textContent = student.name;
-    const hero = calculateHero(progress.levels, progress.completed.length);
-    els.heroScore.textContent = hero;
-    els.heroProgress.style.width = `${hero}%`;
-    els.heroProgress.parentElement.setAttribute("aria-valuenow", String(hero));
-    els.heroMessage.textContent = hero < 35 ? "Du er i gang – hvert forsøg tæller." :
-      hero < 65 ? "Flot! Du klarer mere komplekse samtaler." :
-      "Stærkt arbejde! Du træner samtaler på højt niveau.";
-
-    els.skillGrid.replaceChildren();
-    FACTORS.forEach(factor => {
-      const level = clampLevel(progress.levels[factor.id]);
-      const card = document.createElement("article");
-      card.className = "skill-card";
-      card.innerHTML = `
-        <span class="skill-icon" aria-hidden="true">${factor.icon}</span>
-        <div class="skill-copy">
-          <div><strong>${factor.label}</strong><span>Trin ${level}/5</span></div>
-          <div class="progress-track" role="progressbar" aria-label="${factor.label}" aria-valuemin="1" aria-valuemax="5" aria-valuenow="${level}">
-            <span style="width:${level * 20}%"></span>
-          </div>
-          <p>${describeFactor(factor.id, level)}</p>
-        </div>`;
-      els.skillGrid.append(card);
-    });
-
     const age = chronologicalAge(progress.birthYear);
     els.birthYear.value = progress.birthYear || "";
     els.studentAge.textContent = age === null ? "Angiv fødselsår for at tilpasse emner og samtaler." : `Din alder: ${age} år`;
@@ -388,7 +387,7 @@
       <span class="scenario-status">${completions ? `✓ ${completions}` : "Start →"}</span>`;
     button.addEventListener("click", () => {
       if (els.topicDialog.open) els.topicDialog.close();
-      startConversation(scenario);
+      openScenarioSetup(scenario);
     });
     container.append(button);
   }
@@ -398,14 +397,47 @@
     allScenarios(currentProgress()).forEach(scenario => renderScenarioCard(scenario, els.allScenarioGrid));
   }
 
+  function openScenarioSetup(scenario) {
+    const progress = currentProgress();
+    const topic = topicProgress(progress, scenario.id);
+    state.activeScenario = scenario;
+    els.setupIcon.textContent = scenario.icon;
+    els.setupTitle.textContent = scenario.title;
+    els.setupGoal.textContent = scenario.goal;
+    els.factorGrid.replaceChildren();
+    FACTORS.forEach(factor => {
+      const level = clampLevel(topic.levels[factor.id]);
+      const record = clampLevel(topic.records[factor.id]);
+      const label = document.createElement("label");
+      label.className = "factor-control";
+      label.innerHTML = `
+        <span class="skill-icon" aria-hidden="true">${factor.icon}</span>
+        <span class="factor-copy">
+          <span class="factor-heading"><strong>${factor.label}</strong><span data-level>Trin ${level}/5</span></span>
+          <input type="range" min="1" max="5" step="1" value="${level}" aria-label="${factor.label}">
+          <span class="factor-description" data-description>${describeFactor(factor.id, level)}</span>
+          <span class="factor-record">Rekord: ${record}</span>
+        </span>`;
+      const input = label.querySelector("input");
+      input.addEventListener("input", () => {
+        const value = clampLevel(input.value);
+        topic.levels[factor.id] = value;
+        label.querySelector("[data-level]").textContent = `Trin ${value}/5`;
+        label.querySelector("[data-description]").textContent = describeFactor(factor.id, value);
+        saveProgress();
+      });
+      els.factorGrid.append(label);
+    });
+    saveProgress();
+    showView("scenario-setup");
+  }
+
   function renderTeacher() {
     const student = currentStudent();
     const progress = currentProgress();
-    const hero = calculateHero(progress.levels, progress.completed.length);
     els.teacherName.textContent = student.name;
     els.teacherSummary.innerHTML = `
       <div><span class="summary-avatar">${student.avatar}</span><strong>${student.name}</strong><p>${student.profile}</p></div>
-      <div class="summary-stat"><strong>${hero}</strong><span>Hero-score</span></div>
       <div class="summary-stat"><strong>${progress.completed.length}</strong><span>Bestået</span></div>
       <div class="summary-stat"><strong>${progress.attempts}</strong><span>Forsøg</span></div>`;
     els.teacherStatus.value = progress.notes.status || "";
@@ -445,7 +477,8 @@
   function speak(text) {
     if (!("speechSynthesis" in window)) return;
     const progress = currentProgress();
-    const level = clampLevel(progress.levels.speed);
+    const levels = state.activeScenario ? topicProgress(progress, state.activeScenario.id).levels : defaultLevels();
+    const level = clampLevel(levels.speed);
     const utterance = new SpeechSynthesisUtterance(text);
     const voice = availableVoices().find(item => item.name === progress.voice);
     if (voice) utterance.voice = voice;
@@ -484,11 +517,13 @@
 
   function startConversation(scenario) {
     const progress = currentProgress();
+    const levels = topicProgress(progress, scenario.id).levels;
     progress.recentTopics = rememberTopic(progress.recentTopics, scenario.id, 5);
     state.activeScenario = scenario;
     state.session = {
-      remaining: clampLevel(progress.levels.duration) * 60,
-      duration: clampLevel(progress.levels.duration) * 60,
+      levels: Object.assign({}, levels),
+      remaining: clampLevel(levels.duration) * 60,
+      duration: clampLevel(levels.duration) * 60,
       turns: 0,
       startedAt: Date.now()
     };
@@ -503,15 +538,15 @@
     ["initiative", "warmth", "mood", "noise", "challenge", "speed", "duration"].forEach(id => {
       const factor = FACTORS.find(item => item.id === id);
       const chip = document.createElement("span");
-      chip.textContent = `${factor.icon} ${describeFactor(id, progress.levels[id])}`;
+      chip.textContent = `${factor.icon} ${describeFactor(id, levels[id])}`;
       els.activeFactors.append(chip);
     });
     renderSuggestions(scenario);
     els.timer.textContent = formatTime(state.session.remaining);
     showView("conversation");
-    const initiator = getInitiator(progress.levels.initiative);
+    const initiator = getInitiator(levels.initiative);
     if (initiator === "ai") {
-      const opening = scenario.opening[(clampLevel(progress.levels.extroversion) - 1) % scenario.opening.length];
+      const opening = scenario.opening[(clampLevel(levels.extroversion) - 1) % scenario.opening.length];
       setTimeout(() => addMessage("ai", opening), 450);
     } else {
       addMessage("system", `Du tager det første initiativ. Start samtalen med ${scenario.aiName}.`);
@@ -535,11 +570,8 @@
     const requiredTurns = Math.max(2, Math.round(session.duration / 30));
     if (passed) {
       progress.completed.push(state.activeScenario.id);
-      FACTORS.forEach((factor, index) => {
-        if ((progress.completed.length + index) % 4 === 0) {
-          progress.levels[factor.id] = Math.min(5, clampLevel(progress.levels[factor.id]) + 1);
-        }
-      });
+      const topic = topicProgress(progress, state.activeScenario.id);
+      topic.records = updateRecords(topic.records, session.levels);
       saveProgress();
     }
     state.session = null;
@@ -568,11 +600,9 @@
       } else showView("role");
     });
   });
-  els.toggleDetails.addEventListener("click", () => {
-    const hidden = els.skillGrid.hidden;
-    els.skillGrid.hidden = !hidden;
-    els.toggleDetails.textContent = hidden ? "Skjul detaljer" : "Vis detaljer";
-    els.toggleDetails.setAttribute("aria-expanded", String(hidden));
+  els.cancelSetup.addEventListener("click", renderStudent);
+  els.beginConversation.addEventListener("click", () => {
+    if (state.activeScenario) startConversation(state.activeScenario);
   });
   els.voiceSelect.addEventListener("change", () => {
     currentProgress().voice = els.voiceSelect.value;
@@ -626,8 +656,8 @@
     addMessage("student", text);
     els.chatInput.value = "";
     state.session.turns += 1;
-    const reply = chooseReply(state.activeScenario, state.session.turns, currentProgress().levels, text);
-    const delay = [1500, 1200, 900, 650, 450][clampLevel(currentProgress().levels.speed) - 1];
+    const reply = chooseReply(state.activeScenario, state.session.turns, state.session.levels, text);
+    const delay = [1500, 1200, 900, 650, 450][clampLevel(state.session.levels.speed) - 1];
     setTimeout(() => { if (state.session) addMessage("ai", reply); }, delay);
   });
 

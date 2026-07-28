@@ -8,7 +8,7 @@ at øve hverdagssamtaler i trygge og gradvist sværere rammer.
 - Fem fiktive elevprofiler med lokale fremskridt
 - Separat elev- og lærermodul
 - Otte sværhedsfaktorer på fem niveauer
-- Faktorbaserede progressionsbjælker og samlet Hero-score
+- Otte justerbare sværhedsgrader og personlige rekorder under hvert samtaleemne
 - Fem scenarier: leg, vejvisning, tøjbutik, café og gruppeaktivitet
 - Valg mellem AI- eller elevinitiativ ud fra elevens aktuelle niveau
 - Lokal, regelbaseret samtalesimulator med forslag til svar
