@@ -71,8 +71,19 @@ test("initiativ og simulerede svar følger niveau og scenarie", () => {
   assert.equal(getInitiator(1), "ai");
   assert.equal(getInitiator(5), "student");
   const response = chooseReply(SCENARIOS[0], 0, { challenge: 1 }, "Skal vi lege?");
-  assert.ok(SCENARIOS[0].replies.includes(response));
-  assert.match(chooseReply(SCENARIOS[0], 0, { challenge: 1 }, "Kan du gentage det?"), /anden måde/);
+  assert.match(response, /forslag/);
+  assert.match(chooseReply(SCENARIOS[0], 0, { challenge: 1 }, "Kan du gentage det?"), /enklere ord/);
+  assert.match(chooseReply(SCENARIOS[0], 1, { challenge: 3 }, "Hvad betyder kompromis?"), /begge giver os lidt/);
+  assert.match(chooseReply(SCENARIOS[2], 1, { challenge: 3 }, "Hvad koster trøjen?"), /249 kroner/);
+  assert.match(chooseReply(SCENARIOS[3], 1, { challenge: 3 }, "Jeg kan ikke tåle mælk"), /havredrik/);
+  assert.match(chooseReply(SCENARIOS[0], 1, { challenge: 3 }, "Nej, det har jeg ikke lyst til"), /helt okay/i);
+});
+
+test("talegenkendelse sender automatisk et færdigt svar", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.match(source, /heardFinalResult/);
+  assert.match(source, /Svar modtaget ✓/);
+  assert.match(source, /sendStudentMessage\(\)/);
 });
 
 test("en samtale kræver både fuld tid og løbende elevsvar", () => {

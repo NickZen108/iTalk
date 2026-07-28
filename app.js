@@ -211,9 +211,68 @@
   }
 
   function chooseReply(scenario, turn, levels, input) {
-    const clean = String(input || "").toLowerCase();
+    const clean = String(input || "").toLowerCase().trim();
+    const definitions = {
+      kompromis: "Et kompromis betyder, at vi begge giver os lidt, så vi kan blive enige. Vi kunne for eksempel lege din leg først og min bagefter.",
+      størrelse: "Størrelse fortæller, hvor stort eller småt tøjet er, for eksempel 128, small eller medium.",
+      lyskryds: "Et lyskryds er stedet, hvor røde, gule og grønne lys hjælper biler og mennesker sikkert over vejen."
+    };
+    const definitionWord = Object.keys(definitions).find(word =>
+      clean.includes(word) && /(hvad betyder|hvad er|forstår ikke|forklar)/.test(clean)
+    );
+    if (definitionWord) return definitions[definitionWord];
     if (/tak|farvel|hej hej/.test(clean)) return "Selv tak. Er der noget mere, du vil spørge om?";
-    if (/forstår ikke|gentag|igen/.test(clean)) return "Selvfølgelig. Jeg siger det på en anden måde. Hvad vil du gerne have uddybet?";
+    if (/forstår ikke|gentag|igen|hvad mener du/.test(clean)) {
+      return "Selvfølgelig. Jeg prøver med enklere ord. Hvilken del skal jeg forklare?";
+    }
+    if (/^(ja|okay|ok|gerne|det vil jeg)/.test(clean)) {
+      const affirmations = {
+        play: "Fint! Hvad skal vi begynde med, og hvem vil du spørge, om de vil være med?",
+        directions: "Godt. Fortsæt ligeud til lyskrydset. Hvad vil du vide bagefter?",
+        clothes: "Fint. Vil du prøve trøjen eller se den i en anden størrelse?",
+        cafe: "Fint. Skal der være noget særligt i eller på din bestilling?",
+        group: "Dejligt. Hvilken opgave vil du helst hjælpe gruppen med?"
+      };
+      return affirmations[scenario.id] || "Fint. Fortæl mig gerne lidt mere.";
+    }
+    if (/^(nej|ellers tak|det vil jeg ikke)|ikke lyst|kan ikke lide/.test(clean)) {
+      const rejections = {
+        play: "Det er helt okay. Hvad kunne du bedre tænke dig at lege?",
+        directions: "Okay. Skal jeg forklare en anden vej?",
+        clothes: "Helt i orden. Hvad leder du efter i stedet?",
+        cafe: "Helt i orden. Hvad kunne du tænke dig i stedet?",
+        group: "Det er okay. Er der en anden rolle, du hellere vil have?"
+      };
+      return rejections[scenario.id] || "Det er helt okay. Hvad vil du hellere?";
+    }
+    if (scenario.id === "play") {
+      if (/hvem/.test(clean)) return "Vi kan spørge Alma og Malik, om de vil være med. Hvem vil du helst spørge først?";
+      if (/hvor/.test(clean)) return "Vi kan lege ude i skolegården eller inde i fællesrummet. Hvad passer bedst?";
+      if (/hvad vil du|lyst til/.test(clean)) return "Jeg har lyst til fangeleg, men jeg vil også gerne høre din idé.";
+      if (/skal vi|vi kan|jeg vil gerne/.test(clean)) return `Det lyder som et forslag. Hvad kan vi gøre, hvis jeg hellere vil noget andet?`;
+    }
+    if (scenario.id === "directions") {
+      if (/hvor lang|hvor langt|tid/.test(clean)) return "Det tager cirka fem minutter at gå. Vil du have et sted at holde øje med undervejs?";
+      if (/højre|venstre|dreje/.test(clean)) return "Gå ligeud og drej til højre efter bageren. Kan du gentage ruten med dine egne ord?";
+      if (/hvor|vej|bibliotek/.test(clean)) return "Biblioteket ligger efter bageren på højre side. Ved du, hvor bageren er?";
+    }
+    if (scenario.id === "clothes") {
+      if (/pris|koster|krone/.test(clean)) return "Trøjen koster 249 kroner. Vil du også vide, om den er på tilbud?";
+      if (/størrelse|small|medium|large/.test(clean)) return "Vi har den i small, medium og large. Hvilken størrelse vil du prøve?";
+      if (/farve|blå|grøn|rød|sort/.test(clean)) return "Den findes i blå, grøn og sort. Hvilken farve kan du bedst lide?";
+    }
+    if (scenario.id === "cafe") {
+      if (/koster|pris|krone/.test(clean)) return "Den koster 38 kroner. Vil du betale med kort eller kontanter?";
+      if (/stor|lille|størrelse/.test(clean)) return "Du kan vælge en lille eller stor. Hvilken vil du have?";
+      if (/allerg|mælk|laktose/.test(clean)) return "Vi kan lave den med almindelig mælk eller havredrik. Hvad passer dig?";
+    }
+    if (scenario.id === "group") {
+      if (/må jeg|være med/.test(clean)) return "Ja, du må gerne være med. Vil du bygge, finde materialer eller holde styr på reglerne?";
+      if (/hjælpe|opgave|rolle/.test(clean)) return "Du kan hjælpe med at finde materialer. Passer det, eller vil du hellere have en anden opgave?";
+    }
+    if (/\?$|^(hvad|hvem|hvor|hvornår|hvordan|hvorfor|kan|må)/.test(clean)) {
+      return "Godt spørgsmål. Jeg er ikke helt sikker på, hvad du mener endnu. Kan du spørge med lidt flere ord?";
+    }
     const challenge = clampLevel(levels.challenge);
     const index = challenge >= 4 ? (turn + 1) % scenario.replies.length : turn % scenario.replies.length;
     return scenario.replies[index];
@@ -649,39 +708,51 @@
     saveProgress();
     els.teacherSaveStatus.textContent = "Gemt på denne enhed ✓";
   });
-  els.chatForm.addEventListener("submit", event => {
-    event.preventDefault();
+  function sendStudentMessage() {
     const text = els.chatInput.value.trim();
-    if (!text || !state.session) return;
+    if (!text || !state.session) return false;
     addMessage("student", text);
     els.chatInput.value = "";
     state.session.turns += 1;
     const reply = chooseReply(state.activeScenario, state.session.turns, state.session.levels, text);
     const delay = [1500, 1200, 900, 650, 450][clampLevel(state.session.levels.speed) - 1];
     setTimeout(() => { if (state.session) addMessage("ai", reply); }, delay);
+    return true;
+  }
+  els.chatForm.addEventListener("submit", event => {
+    event.preventDefault();
+    sendStudentMessage();
   });
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   let recognition = null;
   if (SpeechRecognition) {
+    let heardFinalResult = false;
     recognition = new SpeechRecognition();
     recognition.lang = "da-DK";
     recognition.interimResults = true;
     recognition.continuous = false;
     recognition.onstart = () => {
+      heardFinalResult = false;
       els.speechButton.classList.add("listening");
       els.speechButton.setAttribute("aria-pressed", "true");
       els.speechStatus.textContent = "Lytter… tal nu";
     };
     recognition.onresult = event => {
       els.chatInput.value = Array.from(event.results).map(result => result[0].transcript).join("");
+      heardFinalResult = Array.from(event.results).some(result => result.isFinal);
     };
     recognition.onend = () => {
       els.speechButton.classList.remove("listening");
       els.speechButton.setAttribute("aria-pressed", "false");
-      els.speechStatus.textContent = els.chatInput.value
-        ? "Talen er skrevet i svarfeltet. Ret den eller tryk Send."
-        : "Tryk på mikrofonen for at svare med stemmen.";
+      if (heardFinalResult && els.chatInput.value.trim()) {
+        els.speechStatus.textContent = "Svar modtaget ✓";
+        sendStudentMessage();
+      } else {
+        els.speechStatus.textContent = els.chatInput.value
+          ? "Talen blev ikke afsluttet. Ret svaret eller tryk Send."
+          : "Tryk på mikrofonen for at svare med stemmen.";
+      }
     };
     recognition.onerror = event => {
       const denied = event.error === "not-allowed" || event.error === "service-not-allowed";
