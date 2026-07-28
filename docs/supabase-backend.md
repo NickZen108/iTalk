@@ -1,4 +1,4 @@
-# iTalk Supabase-backend
+# Elevspor Supabase-backend
 
 Dette er MVP-backenden til skoler, medarbejdere, anonyme elevprofiler,
 aktivitet, månedlig opgørelse og privat medielager. Den er designet til
@@ -53,23 +53,56 @@ Hvis Docker ikke er tilgængelig, kan Node-testene og web-builden stadig køres,
 men migrationen er først fuldt integrationstestet, når `supabase db reset` og
 `supabase test db` består mod rigtig Postgres.
 
-## Opsætning i et hosted Supabase-projekt
+## Automatisk deployment til det hostede Supabase-projekt
+
+Elevspor bruger `.github/workflows/deploy-supabase.yml`. Workflowet kører
+automatisk, når en migration under `supabase/migrations/` merges til `main`,
+og kan også startes manuelt fra GitHub Actions.
+
+Repository Variables:
+
+- `SUPABASE_PROJECT_REF`: projektets ref. Ikke hemmelig.
+- `SUPABASE_URL`: Project URL. Må bruges i frontend.
+- `SUPABASE_PUBLISHABLE_KEY`: publishable/anon key. Må bruges i frontend,
+  fordi RLS håndhæver adgangen.
+
+Repository Secrets:
+
+- `SUPABASE_ACCESS_TOKEN`: Supabase Personal Access Token til CLI-linkning.
+- `SUPABASE_DB_PASSWORD`: adgangskoden til projektets Postgres-database.
+
+Workflowet viser aldrig værdierne, bruger ikke `set -x` og sender ikke
+hemmeligheder som kommandolinjeargumenter. GitHub maskerer desuden repository
+secrets i logs. Efter migration kører workflowet pgTAP-pakken direkte mod
+den hostede database. Testdata oprettes i transaktioner og rulles tilbage.
+
+Service-role/secret key bruges ikke til migrationer eller test. Den må aldrig
+lægges i frontend, repository, GitHub Variables, logs eller beskeder.
+
+## Første opsætning i et hosted Supabase-projekt
 
 1. Opret et Supabase-projekt i en EU-region, hvis tilgængeligt.
-2. Installér Supabase CLI og log ind lokalt.
-3. Kobl repoet på:
+2. Opret et Personal Access Token på
+   `https://supabase.com/dashboard/account/tokens`.
+3. Find eller nulstil databaseadgangskoden under projektets
+   `Database` → `Settings`.
+4. Opret de to Repository Secrets under GitHub-repoets
+   `Settings` → `Secrets and variables` → `Actions`.
+5. Kontrollér de tre Repository Variables samme sted under fanen `Variables`.
+6. Start workflowet `Deploy Elevspor database` manuelt første gang.
+7. Alternativ lokal nødkørsel:
 
    ```bash
    npx supabase link --project-ref PROJEKT_REF
    npx supabase db push
    ```
 
-4. Sæt Auth Site URL til `https://nickzen108.github.io/iTalk/`.
-5. Sæt redirect URL til samme adresse.
-6. Kopiér kun Project URL og publishable/anon key til frontendens lokale
+8. Sæt Auth Site URL til `https://nickzen108.github.io/iTalk/`.
+9. Sæt redirect URL til samme adresse.
+10. Kopiér kun Project URL og publishable/anon key til frontendens lokale
    konfiguration. De værdier er beregnet til klientbrug, når RLS er aktiv.
-7. Læg aldrig `service_role`, databaseadgangskode eller mailhemmeligheder
-   i repoet. De hører hjemme i Supabase Secrets/Vault.
+11. Læg aldrig Personal Access Token, `service_role`/secret key,
+    databaseadgangskode eller mailhemmeligheder i frontend eller repoet.
 
 ## Login og onboarding
 
@@ -116,9 +149,11 @@ Ved senere aktivering:
 
 For livekobling kræves:
 
-- Supabase Project URL
-- Supabase publishable key (eller legacy anon key)
-- Project ref til CLI-linkning
+- Supabase Project URL som GitHub Variable
+- Supabase publishable key (eller legacy anon key) som GitHub Variable
+- Project ref som GitHub Variable
+- Personal Access Token som GitHub Actions-secret
+- databaseadgangskode som GitHub Actions-secret
 - bekræftelse af valgt Supabase-region og databehandleraftale
 
 Service-role-nøglen skal ikke sendes i chat eller commits. Hvis den senere
