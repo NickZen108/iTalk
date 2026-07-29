@@ -35,6 +35,10 @@ const studentAuditSql = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20260729172500_student_audit_log.sql"),
   "utf8"
 );
+const studentAuditOrderingSql = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20260729174500_order_student_audit_events.sql"),
+  "utf8"
+);
 
 test("backend-migrationen har de nødvendige tenant-tabeller", () => {
   [
@@ -263,4 +267,5 @@ test("auditsporet oprettes server-side og gemmer ikke elevens navn", () => {
   assert.match(studentAuditSql, /security definer/);
   assert.doesNotMatch(studentAuditSql, /\b(?:student_name|email|birth_year)\b/i);
   assert.doesNotMatch(studentAuditSql, /grant (?:select|insert|update|delete) on public\.student_audit_events to authenticated/i);
+  assert.match(studentAuditOrderingSql, /order by e\.occurred_at desc, e\.id desc/);
 });
