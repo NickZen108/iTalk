@@ -28,16 +28,20 @@
       <h1>Log ind på Elevspor</h1>
       <p>Lærere opretter og godkender elever fra skolens sikre lærerområde.</p>
       <div class="privacy-note"><span aria-hidden="true">🔒</span> Elevnavne, elevfotos og samtaleindhold sendes ikke til Supabase.</div>
-      <details class="settings student-access-entry">
-        <summary>Jeg er elev og har en kode</summary>
+      <details id="student-access-entry" class="settings student-access-entry">
+        <summary>Åbn elevområdet med QR, link eller kode</summary>
         <form id="student-access-form" class="settings-body">
+          <p class="student-access-help">Har du scannet en QR-kode eller åbnet et link, er adgangen allerede klar. På en laptop kan du skrive engangskoden fra din lærer.</p>
           <label for="student-access-name">Dit fornavn</label>
-          <input id="student-access-name" maxlength="80" autocomplete="given-name" required>
-          <label for="student-access-code">Engangskode</label>
-          <input id="student-access-code" maxlength="14" autocomplete="one-time-code"
-                 autocapitalize="characters" spellcheck="false" placeholder="AB12-CD34-EF56" required>
+          <input id="student-access-name" maxlength="80" autocomplete="given-name" aria-describedby="student-access-privacy" required>
+          <p id="student-access-privacy" class="form-help">Fornavnet gemmes kun på denne enhed og sendes ikke i linket.</p>
+          <div id="manual-student-access-fields">
+            <label for="student-access-code">Engangskode</label>
+            <input id="student-access-code" maxlength="14" autocomplete="one-time-code"
+                   autocapitalize="characters" spellcheck="false" placeholder="AB12-CD34-EF56">
+          </div>
           <button id="redeem-student-access" class="primary-button" type="submit">Åbn mit elevområde</button>
-          <p id="student-access-status" class="save-status" aria-live="polite"></p>
+          <p id="student-access-status" class="save-status student-access-state" aria-live="polite" aria-atomic="true"></p>
         </form>
       </details>
       <details class="settings school-access" open>
@@ -71,14 +75,86 @@
           <h1>Skolens administration</h1>
           <p id="teacher-profile-name"></p>
         </div>
-        <button id="dashboard-signout" class="secondary-button" type="button">Log ud</button>
+        <div class="dashboard-heading-actions">
+          <button id="show-admin-onboarding" class="secondary-button" type="button" hidden>Kom godt i gang</button>
+          <button id="dashboard-signout" class="secondary-button" type="button">Log ud</button>
+        </div>
       </div>
       <div class="privacy-note"><span aria-hidden="true">🔒</span> Elevnavne bliver på denne enhed. Supabase modtager kun et anonymt elev-id.</div>
+      <section id="admin-onboarding" class="admin-onboarding" aria-labelledby="admin-onboarding-title" hidden>
+        <div class="admin-onboarding-heading">
+          <div>
+            <p class="eyebrow">Første tur gennem ElevSpor</p>
+            <h2 id="admin-onboarding-title">Kom sikkert fra elev til aktivitet</h2>
+            <p>Følg rækkefølgen én gang med en test-elev. Så ved du præcis, hvad læreren og eleven møder.</p>
+          </div>
+          <button id="dismiss-admin-onboarding" class="secondary-button" type="button">Skjul guide</button>
+        </div>
+        <ol class="admin-onboarding-steps">
+          <li>
+            <span>1</span>
+            <div><strong>Opret og godkend eleven</strong><p>Opret eleven, gå til Elever, og godkend kortet under “Mangler godkendelse”.</p></div>
+          </li>
+          <li>
+            <span>2</span>
+            <div><strong>Opret elevadgang</strong><p>Tryk “Opret elevadgang” på den godkendte elev. Adgangen er kortlivet og kan kun bruges én gang.</p></div>
+          </li>
+          <li>
+            <span>3</span>
+            <div><strong>Test QR eller kode</strong><p>Scan QR-koden på en anden enhed, eller åbn elevsiden og indtast engangskoden.</p></div>
+          </li>
+          <li>
+            <span>4</span>
+            <div><strong>Se elevens aktivitet</strong><p>Gå tilbage til elevkortet og vælg “Status og indstillinger” for at se aktivitet og udvikling.</p></div>
+          </li>
+        </ol>
+        <button id="start-admin-onboarding" class="primary-button" type="button">Start med at oprette en elev</button>
+      </section>
+      <section id="test-school-checklist" class="test-school-checklist" aria-labelledby="test-school-checklist-title" hidden>
+        <div class="admin-onboarding-heading">
+          <div>
+            <p class="eyebrow">Kun Test-Skole</p>
+            <h2 id="test-school-checklist-title">Gennemfør testforløb</h2>
+            <p>Bevis hele kæden uden at ændre eller slette eksisterende data. Automatiske kontroller læser kun den aktuelle tilstand.</p>
+          </div>
+          <button id="refresh-test-checklist" class="secondary-button" type="button">Opdatér status</button>
+        </div>
+        <p id="test-checklist-status" class="save-status" aria-live="polite" aria-atomic="true"></p>
+        <ol class="test-checklist">
+          <li>
+            <span id="test-check-teacher" class="test-check-indicator" aria-hidden="true">…</span>
+            <div><strong>1. Lærer: Test-Elev er godkendt</strong><p id="test-check-teacher-text">Kontrollerer lærer og elevstatus…</p></div>
+            <button class="secondary-button" type="button" data-test-checklist-page="students">Åbn Elever</button>
+          </li>
+          <li>
+            <span id="test-check-device" class="test-check-indicator" aria-hidden="true">…</span>
+            <div><strong>2. Elev: en adgang er indløst</strong><p id="test-check-device-text">Kontrollerer aktive elevenheder…</p></div>
+            <span class="manual-check-label">Automatisk kontrol</span>
+          </li>
+          <li>
+            <span id="test-check-activity" class="test-check-indicator" aria-hidden="true">…</span>
+            <div><strong>3. Aktivitet: en øvelse er gennemført</strong><p id="test-check-activity-text">Kontrollerer registreret aktivitet…</p></div>
+            <span class="manual-check-label">Automatisk kontrol</span>
+          </li>
+          <li>
+            <span id="test-check-review" class="test-check-indicator" aria-hidden="true">○</span>
+            <div>
+              <strong>4. Lærer: kontrollér resultat og log</strong>
+              <p>Disse to trin kræver dit blik og bliver aldrig markeret automatisk.</p>
+              <label class="manual-test-check"><input id="test-check-teacher-review" type="checkbox"> Jeg har set resultatet på elevens enhed og den registrerede aktivitet ovenfor</label>
+              <label class="manual-test-check"><input id="test-check-audit-review" type="checkbox"> Jeg har åbnet Aktivitetslog og kontrolleret hændelserne</label>
+            </div>
+            <button class="secondary-button" type="button" data-test-checklist-page="audit">Åbn Aktivitetslog</button>
+          </li>
+        </ol>
+        <p class="test-checklist-note">Et grønt automatisk trin betyder kun, at serveren har fundet den konkrete tilstand. Manuelle flueben betyder kun, at du selv har bekræftet visningen.</p>
+        <button id="reset-test-checklist-manual" class="secondary-button" type="button">Nulstil manuelle flueben</button>
+      </section>
       <nav class="school-nav" aria-label="Lærerområdets sider">
         <button class="school-nav-button" type="button" data-school-page="students">Elever</button>
         <button class="school-nav-button" type="button" data-school-page="create-student">Opret elev</button>
         <button id="staff-page-button" class="school-nav-button" type="button" data-school-page="staff" hidden>Medarbejdere</button>
-        <button id="audit-page-button" class="school-nav-button" type="button" data-school-page="audit" hidden>Auditspor</button>
+        <button id="audit-page-button" class="school-nav-button" type="button" data-school-page="audit" hidden>Aktivitetslog</button>
       </nav>
 
       <section id="students-page" class="school-page">
@@ -86,6 +162,7 @@
           <div>
             <p class="eyebrow">Elevadministration</p>
             <h2>Elever</h2>
+            <p class="page-help">Godkend nye elever først. Opret derefter en kortlivet elevadgang, når eleven sidder klar med sin enhed.</p>
           </div>
         </div>
         <p id="students-page-status" class="save-status" aria-live="polite"></p>
@@ -111,6 +188,7 @@
             <input id="student-search" type="search" placeholder="Søg efter elev…" autocomplete="off">
           </label>
           <div id="all-student-list" class="student-admin-list"></div>
+          <p id="student-search-empty" class="student-list-empty" hidden>Ingen elever matcher din søgning. Prøv navn, klasse eller fødselsår.</p>
         </section>
       </section>
 
@@ -118,12 +196,14 @@
         <form id="create-student-form" class="teacher-form create-student-form">
           <p class="eyebrow">Ny elev</p>
           <h2>Opret elev</h2>
+          <p class="page-help">Opret kun én profil pr. elev. Eleven får ikke en mail eller konto; du godkender profilen bagefter under Elever.</p>
           <label for="new-student-name">Elevens navn</label>
           <input id="new-student-name" maxlength="80" autocomplete="off" required>
           <label for="new-student-birth-year">Fødselsår</label>
           <input id="new-student-birth-year" type="number" min="1926" max="2026" inputmode="numeric" required>
           <label for="new-student-label">Klasse/hold eller andet kendetegn <span class="hint">(kun lærerområdet)</span></label>
           <input id="new-student-label" maxlength="40" autocomplete="off" placeholder="Fx 4.A eller Hold blå">
+          <p class="form-help">Kendetegnet gør det sikkert at skelne elever med samme navn. Navn og kendetegn bliver kun på denne enhed.</p>
           <button id="create-student-button" class="primary-button" type="submit">Opret elev til godkendelse</button>
           <p id="create-student-status" class="save-status" aria-live="polite"></p>
         </form>
@@ -134,6 +214,7 @@
         <div>
           <p class="eyebrow">Medarbejdere</p>
           <h2>Invitér en lærer</h2>
+          <p class="page-help">Kun inviterede arbejdsmails kan oprette en medarbejderkonto. Vælg Lærer til daglig elevadministration og Skoleadministrator kun til personer, der også må invitere medarbejdere og se aktivitetsloggen.</p>
         </div>
         <form id="staff-invitation-form">
           <label for="staff-invitation-email">Lærerens arbejdsmail</label>
@@ -145,6 +226,10 @@
           </select>
           <button class="primary-button" type="submit">Opret sikker invitation</button>
         </form>
+        <div id="staff-invitation-empty" class="context-empty-state">
+          <strong>Ingen ny invitation endnu</strong>
+          <p>Udfyld arbejdsmail og rolle ovenfor. Derefter får du et engangslink, som du selv sender sikkert til medarbejderen.</p>
+        </div>
         <div id="staff-invitation-result" class="invitation-result" hidden>
           <label for="staff-invitation-link">Invitationslink</label>
           <input id="staff-invitation-link" readonly>
@@ -158,8 +243,8 @@
         <div class="section-heading school-page-heading">
           <div>
             <p class="eyebrow">Skolens administration</p>
-            <h2>Samlet auditspor</h2>
-            <p>Administrative elevændringer på tværs af skolen. Kun administratorer kan se siden.</p>
+            <h2>Aktivitetslog</h2>
+            <p class="page-help">Se hvem der har fjernet en enhed, deaktiveret, genaktiveret eller slettet en elev. Kun skoleadministratorer kan se loggen.</p>
           </div>
           <button id="export-school-audit" class="secondary-button" type="button">Eksportér CSV</button>
         </div>

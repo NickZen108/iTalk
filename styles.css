@@ -140,6 +140,13 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
 .save-status[data-status="loading"] { color: var(--brand-dark); }
 .save-status[data-status="success"] { color: #16734a; }
 .save-status[data-status="error"] { color: #a52b43; }
+.student-access-help { margin-top: 0; color: var(--muted); }
+#manual-student-access-fields { display: grid; gap: .7rem; }
+.student-access-state { padding: .65rem .75rem; border-radius: 11px; }
+.student-access-state:empty { padding: 0; }
+.student-access-state[data-status="loading"] { background: #eeeaff; }
+.student-access-state[data-status="success"] { background: #e7f7ef; }
+.student-access-state[data-status="error"] { background: #fff0f2; }
 
 .timer { display: flex; align-items: center; gap: .45rem; padding: .55rem .75rem; border-radius: 999px; background: var(--ink); color: #fff; font-size: 1.15rem; }
 .conversation-heading { display: flex; gap: .9rem; align-items: center; margin: 1rem 0; }
@@ -220,6 +227,52 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
 .teacher-approval .primary-button { margin-top: .5rem; }
 
 .create-student-form { margin: 1.25rem 0; }
+.dashboard-heading-actions { display: flex; flex-wrap: wrap; gap: .6rem; justify-content: flex-end; }
+.admin-onboarding {
+  margin: 1rem 0 1.25rem;
+  padding: 1.15rem;
+  border: 2px solid #d8cffd;
+  border-radius: 22px;
+  background: linear-gradient(145deg,#fff,#f1edff);
+  box-shadow: var(--shadow);
+}
+.admin-onboarding-heading { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
+.admin-onboarding-heading h2 { margin-bottom: .35rem; }
+.admin-onboarding-heading p:last-child { margin-bottom: 0; color: var(--muted); }
+.admin-onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: .75rem;
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-onboarding-steps li { display: flex; gap: .65rem; padding: .85rem; border-radius: 15px; background: var(--surface); }
+.admin-onboarding-steps li > span {
+  display: grid; place-items: center; flex: 0 0 2rem; width: 2rem; height: 2rem;
+  border-radius: 50%; background: var(--brand); color: #fff; font-weight: 900;
+}
+.admin-onboarding-steps p { margin: .25rem 0 0; color: var(--muted); font-size: .9rem; }
+.test-school-checklist {
+  margin: 1rem 0 1.25rem; padding: 1.15rem; border: 2px solid #8fcdb8;
+  border-radius: 22px; background: linear-gradient(145deg,#fff,#edf8f3); box-shadow: var(--shadow);
+}
+.test-checklist { display: grid; gap: .7rem; margin: 1rem 0; padding: 0; list-style: none; }
+.test-checklist li {
+  display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: .8rem; align-items: center;
+  padding: .9rem; border-radius: 15px; background: var(--surface);
+}
+.test-checklist li p { margin: .2rem 0 0; color: var(--muted); }
+.test-check-indicator {
+  display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%;
+  background: #e5e9e7; color: var(--muted); font-weight: 900;
+}
+.test-check-indicator[data-status="complete"] { background: #d9f3e6; color: #16734a; }
+.test-check-indicator[data-status="unknown"] { background: #fff0d0; color: #775b13; }
+.manual-check-label { color: var(--muted); font-size: .8rem; font-weight: 750; }
+.manual-test-check { display: block; margin-top: .55rem; font-weight: 700; }
+.manual-test-check input { width: auto; margin-right: .4rem; }
+.test-checklist-note { color: var(--muted); font-size: .88rem; }
 .school-nav { display: flex; gap: .55rem; margin: 1.25rem 0; overflow-x: auto; padding-bottom: .25rem; }
 .school-nav-button {
   flex: 0 0 auto; min-height: 46px; padding: .6rem .9rem; border: 2px solid var(--line);
@@ -227,12 +280,15 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
 }
 .school-nav-button.active { border-color: var(--brand); background: var(--accent); color: var(--brand-dark); }
 .school-page-heading { margin-bottom: 1rem; }
+.page-help { max-width: 72ch; color: var(--muted); }
+.form-help { margin: -.15rem 0 .25rem; color: var(--muted); font-size: .9rem; }
 .student-group { margin: 1rem 0 1.6rem; padding: 1rem; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.62); }
 .student-group-heading { display: flex; align-items: center; justify-content: space-between; gap: .7rem; margin-bottom: .75rem; }
 .student-group-heading h3 { margin: 0; font-size: 1.15rem; }
 .student-search { display: block; margin-bottom: .75rem; }
 .student-search input { width: 100%; }
 .student-list-empty { margin: 0; padding: .9rem; border-radius: 13px; background: var(--accent); color: var(--muted); }
+div.student-list-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
 .student-admin-list { display: grid; gap: .75rem; }
 .student-admin-card {
   display: grid;
@@ -252,6 +308,8 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
 .staff-invitation-panel { margin: 1.25rem 0; background: linear-gradient(145deg,#fff,#f1edff); }
 .staff-invitation-panel form { display: grid; grid-template-columns: minmax(180px,1fr) minmax(150px,.45fr) auto; gap: .7rem; align-items: end; }
 .staff-invitation-panel form label { display: none; }
+.context-empty-state { margin-top: 1rem; padding: .9rem; border: 1px dashed #bfb2f5; border-radius: 14px; background: rgba(255,255,255,.65); }
+.context-empty-state p { margin: .25rem 0 0; color: var(--muted); }
 .invitation-result { display: grid; grid-template-columns: 1fr auto; gap: .7rem; align-items: end; }
 .invitation-result label, .invitation-result p { grid-column: 1/-1; }
 .student-access-options { display: grid; grid-template-columns: minmax(180px, 280px) 1fr; gap: 1.25rem; align-items: center; }
@@ -281,6 +339,10 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
 .invite-panel p { margin: .2rem 0 .7rem; }
 button:disabled { opacity: .55; cursor: not-allowed; }
 @media (max-width: 700px) {
+  .admin-onboarding-heading { display: grid; }
+  .admin-onboarding-steps { grid-template-columns: 1fr; }
+  .test-checklist li { grid-template-columns: auto 1fr; align-items: start; }
+  .test-checklist li > :last-child { grid-column: 2; justify-self: start; }
   .staff-invitation-panel form, .invitation-result { grid-template-columns: 1fr; }
   .invitation-result label, .invitation-result p { grid-column: auto; }
   .student-admin-card { grid-template-columns: 1fr; }

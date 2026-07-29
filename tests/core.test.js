@@ -4,7 +4,8 @@ const {
   FACTORS, STUDENTS, SCENARIOS, clampLevel, describeFactor,
   defaultLevels, topicProgress, updateRecords, createProgress, chronologicalAge, effectiveAge, rememberTopic,
   createCustomScenario, getInitiator, isConversationPassed, chooseReply,
-  schoolPageFromHash, schoolHashForPage, studentIdentityLabel
+  schoolPageFromHash, schoolHashForPage, studentIdentityLabel, adminOnboardingStorageKey,
+  normalizeStudentAccessSecret, studentAccessErrorMessage, isTestSchool, testChecklistStorageKey
 } = require("../app.js");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -174,6 +175,48 @@ test("lærerområdets undersider har stabile URL'er", () => {
   assert.match(app, /schoolPageFromHash\(location\.hash\)[\s\S]*elevspor\.lastSchoolPage/);
 });
 
+test("administrator får en genåbnelig førstegangs-guide til hele elevflowet", () => {
+  assert.equal(
+    adminOnboardingStorageKey("skole-1", "bruger-2"),
+    "elevspor.adminOnboardingDismissed.skole-1.bruger-2"
+  );
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.match(html, /id="admin-onboarding"[^>]*hidden/);
+  assert.match(html, /Opret og godkend eleven/);
+  assert.match(html, /Opret elevadgang/);
+  assert.match(html, /Test QR eller kode/);
+  assert.match(html, /Se elevens aktivitet/);
+  assert.match(html, /id="start-admin-onboarding"/);
+  assert.match(html, /id="show-admin-onboarding"[^>]*hidden/);
+  assert.match(app, /const canManageStaff = \["owner", "admin"\]\.includes\(membership\.role\)/);
+  assert.match(app, /setAdminOnboardingVisible\(!store\.read\(onboardingKey, false\)\)/);
+  assert.match(app, /store\.write\(storageKey, true\)/);
+  assert.match(app, /showSchoolPage\("create-student"\)/);
+  assert.match(app, /els\.newStudentName\.focus\(\)/);
+});
+
+test("lærerområdets sider forklarer næste handling og håndterer tomme resultater", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.match(html, /Godkend nye elever først/);
+  assert.match(html, /Eleven får ikke en mail eller konto/);
+  assert.match(html, /Kendetegnet gør det sikkert at skelne elever med samme navn/);
+  assert.match(html, /Kun inviterede arbejdsmails kan oprette en medarbejderkonto/);
+  assert.match(html, /id="staff-invitation-empty"/);
+  assert.match(html, /Skoleadministrator kun til personer/);
+  assert.match(html, /<h2>Aktivitetslog<\/h2>/);
+  assert.match(html, /Kun skoleadministratorer kan se loggen/);
+  assert.match(html, /id="student-search-empty"[^>]*hidden/);
+  assert.match(app, /Alt er behandlet — ingen elever venter på godkendelse/);
+  assert.match(app, /Opret den første elev/);
+  assert.match(app, /showSchoolPage\("create-student"\)/);
+  assert.match(app, /Ingen ændringer matcher filtrene\. Nulstil filtrene/);
+  assert.match(app, /Ingen administrative ændringer endnu\. Loggen udfyldes/);
+  assert.match(app, /studentSearchEmpty\.hidden = !query \|\| visible > 0/);
+  assert.match(app, /staffInvitationEmpty\.hidden = true/);
+});
+
 test("elever med samme navn kan skelnes uden at navnet bliver identitet", () => {
   assert.equal(
     studentIdentityLabel({ name: "Emma", localLabel: "4.A" }, 2014),
@@ -198,6 +241,54 @@ test("elevadgang kan åbnes med QR, link eller kode", () => {
   assert.match(app, /redeemStudentAccessFromHash/);
   assert.match(app, /recordStudentDeviceActivity/);
   assert.match(app, /elevspor\.studentDevice/);
+});
+
+test("elevadgang har sikre og forståelige tilstande uden persondata i URL'en", () => {
+  assert.equal(normalizeStudentAccessSecret("ab12-cd34-ef56"), "ab12cd34ef56");
+  assert.match(studentAccessErrorMessage(new Error("Elevadgangen er ugyldig eller udløbet")), /ugyldig, udløbet eller allerede brugt/);
+  assert.match(studentAccessErrorMessage(new Error("Failed to fetch")), /Forbindelsen til ElevSpor forsvandt/);
+  assert.match(studentAccessErrorMessage(new Error("andet"), false), /Hvis koden derefter afvises/);
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.match(html, /QR, link eller kode/);
+  assert.match(html, /aria-live="polite" aria-atomic="true"/);
+  assert.match(html, /Fornavnet gemmes kun på denne enhed og sendes ikke i linket/);
+  assert.match(app, /url\.hash = `\/elev-adgang\/\$\{access\.token\}`/);
+  assert.doesNotMatch(app, /encodeStudentAccessProfile|decodeStudentAccessProfile/);
+  assert.doesNotMatch(app, /elev-adgang\/\$\{access\.token\}\/\$\{profile\}/);
+  assert.match(app, /Linket er ugyldigt/);
+  assert.match(app, /Linket er klar\. Skriv dit fornavn/);
+  assert.match(app, /Kontrollerer den sikre engangsadgang/);
+  assert.match(app, /Adgangen er godkendt\. Åbner dit elevområde/);
+  assert.match(app, /studentAccessCode\.value = ""/);
+  assert.match(app, /Koden skal have 12 bogstaver eller tal/);
+  assert.doesNotMatch(app, /console\.(?:log|error|warn).*studentAccess/i);
+});
+
+test("Test-Skole har et ikke-destruktivt testforløb med ærlige kontroller", () => {
+  assert.equal(isTestSchool(" Test-Skole "), true);
+  assert.equal(isTestSchool("Pilotskolen"), false);
+  assert.equal(
+    testChecklistStorageKey("skole-1", "admin-2"),
+    "elevspor.testChecklistManual.skole-1.admin-2"
+  );
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const client = fs.readFileSync(path.join(__dirname, "..", "src", "supabase-client.js"), "utf8");
+  assert.match(html, /id="test-school-checklist"[^>]*hidden/);
+  assert.match(html, /Gennemfør testforløb/);
+  assert.match(html, /Automatiske kontroller læser kun den aktuelle tilstand/);
+  assert.match(html, /disse to trin kræver dit blik/i);
+  assert.match(html, /Manuelle flueben betyder kun/);
+  assert.match(app, /canManageStaff && isTestSchool\(membership\.schools\?\.name\)/);
+  assert.match(app, /entry\.student\.name\.trim\(\)\.toLocaleLowerCase\("da"\) === "test-elev"/);
+  assert.match(app, /device => !device\.revoked_at/);
+  assert.match(app, /item\.activity_type === "conversation_completed"/);
+  assert.match(app, /Ingen status er antaget/);
+  assert.match(app, /checklisten har ikke ændret data/);
+  assert.match(client, /\.from\("student_activities"\)/);
+  assert.match(client, /\.select\("student_id,activity_type,occurred_at"\)/);
+  assert.doesNotMatch(app, /refreshTestChecklist[\s\S]{0,2500}(?:createStudentAccess|approveStudent|setStudentActive|deleteStudentPermanently)\(/);
 });
 
 test("adgang, enheder, deaktivering og permanent sletning er tydeligt adskilt", () => {

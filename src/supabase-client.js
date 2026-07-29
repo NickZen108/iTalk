@@ -225,6 +225,20 @@ async function listSchoolAuditEvents(schoolId, filters = {}) {
   return data;
 }
 
+async function listStudentActivities(studentIds) {
+  const ids = Array.isArray(studentIds) ? studentIds.filter(Boolean) : [];
+  if (!ids.length) return [];
+  const supabase = await requireClient();
+  const { data, error } = await supabase
+    .from("student_activities")
+    .select("student_id,activity_type,occurred_at")
+    .in("student_id", ids)
+    .order("occurred_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return data;
+}
+
 async function recordActivity(localId, activityType, durationSeconds, birthYear) {
   const supabase = await requireClient();
   const session = await getSession();
@@ -284,6 +298,7 @@ globalThis.ElevsporSupabase = {
   deleteStudentPermanently,
   listStudentAuditEvents,
   listSchoolAuditEvents,
+  listStudentActivities,
   recordActivity,
   monthlyUsage,
   hashLocalReference

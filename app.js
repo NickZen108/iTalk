@@ -324,11 +324,39 @@
     return parts.join(" · ");
   }
 
+  function adminOnboardingStorageKey(schoolId, userId) {
+    return `elevspor.adminOnboardingDismissed.${schoolId}.${userId}`;
+  }
+
+  function normalizeStudentAccessSecret(value) {
+    return String(value || "").replace(/[^A-Fa-f0-9]/g, "");
+  }
+
+  function studentAccessErrorMessage(error, online = true) {
+    const message = String(error?.message || "");
+    if (!online || /failed to fetch|network|fetch failed|load failed/i.test(message)) {
+      return "Forbindelsen til ElevSpor forsvandt. Tjek nettet, og prøv igen. Hvis koden derefter afvises, skal læreren oprette en ny.";
+    }
+    if (/ugyldig|udløbet|invalid|expired/i.test(message)) {
+      return "Adgangen er ugyldig, udløbet eller allerede brugt. Bed læreren om en ny QR-kode eller engangskode.";
+    }
+    return "Elevadgangen kunne ikke åbnes. Prøv igen, eller bed læreren om en ny adgang.";
+  }
+
+  function isTestSchool(name) {
+    return String(name || "").trim().toLocaleLowerCase("da") === "test-skole";
+  }
+
+  function testChecklistStorageKey(schoolId, userId) {
+    return `elevspor.testChecklistManual.${schoolId}.${userId}`;
+  }
+
   const api = {
     FACTORS, STUDENTS, SCENARIOS, clampLevel, describeFactor,
     defaultLevels, topicProgress, updateRecords, createProgress, chronologicalAge, effectiveAge, rememberTopic,
     createCustomScenario, getInitiator, isConversationPassed, chooseReply,
-    schoolPageFromHash, schoolHashForPage, studentIdentityLabel
+    schoolPageFromHash, schoolHashForPage, studentIdentityLabel, adminOnboardingStorageKey,
+    normalizeStudentAccessSecret, studentAccessErrorMessage, isTestSchool, testChecklistStorageKey
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.iTalkCore = api;
@@ -367,8 +395,10 @@
     managedStudentEntry: null,
     schoolAuditEvents: [],
     schoolAuditStudentLabels: new Map(),
-    schoolId: ""
+    schoolId: "",
+    testChecklistContext: null
   };
+  state.pendingStudentAccessSecret = "";
 
   const $ = selector => document.querySelector(selector);
   const els = {
@@ -424,6 +454,23 @@
     invitedSignupPanel: $("#invited-signup-panel"),
     schoolSignout: $("#school-signout"),
     dashboardSignout: $("#dashboard-signout"),
+    adminOnboarding: $("#admin-onboarding"),
+    showAdminOnboarding: $("#show-admin-onboarding"),
+    dismissAdminOnboarding: $("#dismiss-admin-onboarding"),
+    startAdminOnboarding: $("#start-admin-onboarding"),
+    testSchoolChecklist: $("#test-school-checklist"),
+    refreshTestChecklist: $("#refresh-test-checklist"),
+    testChecklistStatus: $("#test-checklist-status"),
+    testCheckTeacher: $("#test-check-teacher"),
+    testCheckTeacherText: $("#test-check-teacher-text"),
+    testCheckDevice: $("#test-check-device"),
+    testCheckDeviceText: $("#test-check-device-text"),
+    testCheckActivity: $("#test-check-activity"),
+    testCheckActivityText: $("#test-check-activity-text"),
+    testCheckReview: $("#test-check-review"),
+    testCheckTeacherReview: $("#test-check-teacher-review"),
+    testCheckAuditReview: $("#test-check-audit-review"),
+    resetTestChecklistManual: $("#reset-test-checklist-manual"),
     teacherProfileName: $("#teacher-profile-name"),
     createStudentForm: $("#create-student-form"),
     newStudentName: $("#new-student-name"),
@@ -440,6 +487,7 @@
     allStudentList: $("#all-student-list"),
     pendingStudentCount: $("#pending-student-count"),
     studentSearch: $("#student-search"),
+    studentSearchEmpty: $("#student-search-empty"),
     studentsPageStatus: $("#students-page-status"),
     studentApprovalPanel: $("#student-approval-panel"),
     teacherApprovalStatus: $("#teacher-approval-status"),
@@ -451,7 +499,8 @@
     staffInvitationResult: $("#staff-invitation-result"),
     staffInvitationLink: $("#staff-invitation-link"),
     staffInvitationStatus: $("#staff-invitation-status"),
-    copyStaffInvitation: $("#copy-staff-invitation")
+    copyStaffInvitation: $("#copy-staff-invitation"),
+    staffInvitationEmpty: $("#staff-invitation-empty")
   };
   Object.assign(els, {
     schoolAuditFilters: $("#school-audit-filters"),
@@ -469,6 +518,8 @@
     studentAccessForm: $("#student-access-form"),
     studentAccessName: $("#student-access-name"),
     studentAccessCode: $("#student-access-code"),
+    studentAccessEntry: $("#student-access-entry"),
+    manualStudentAccessFields: $("#manual-student-access-fields"),
     studentAccessStatus: $("#student-access-status"),
     redeemStudentAccess: $("#redeem-student-access"),
     studentAccessDialog: $("#student-access-dialog"),
@@ -659,19 +710,6 @@
     saveProgress();
   }
 
-  function encodeStudentAccessProfile(profile) {
-    const bytes = new TextEncoder().encode(JSON.stringify(profile));
-    let binary = "";
-    bytes.forEach(byte => { binary += String.fromCharCode(byte); });
-    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  }
-
-  function decodeStudentAccessProfile(value) {
-    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-    const binary = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="));
-    return JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, char => char.charCodeAt(0))));
-  }
-
   async function openStudentAccess(student, backendStudentId, button) {
     button.disabled = true;
     const originalText = button.textContent;
@@ -679,16 +717,9 @@
     try {
       const access = await globalThis.ElevsporSupabase.createStudentAccess(backendStudentId);
       const progress = state.progress[student.id] || {};
-      const profile = encodeStudentAccessProfile({
-        id: student.id,
-        name: student.name,
-        avatar: student.avatar,
-        profile: student.profile,
-        birthYear: progress.birthYear || ""
-      });
       const url = new URL(location.href);
       url.search = "";
-      url.hash = `/elev-adgang/${access.token}/${profile}`;
+      url.hash = `/elev-adgang/${access.token}`;
       const link = url.toString();
       els.studentAccessTitle.textContent = `Elevadgang til ${studentIdentityLabel(student, progress.birthYear)}`;
       els.studentAccessLink.value = link;
@@ -707,7 +738,7 @@
 
   async function completeStudentAccess(secret, profile) {
     const access = await globalThis.ElevsporSupabase.redeemStudentAccess(secret);
-    const id = profile.id || (
+    const id = access.student_id || (
       typeof crypto.randomUUID === "function"
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -718,7 +749,7 @@
         id,
         name: profile.name,
         avatar: profile.avatar || "🎯",
-        profile: profile.profile || "Elevprofil",
+        profile: "Elevprofil",
         levels: defaultLevels()
       };
       STUDENTS.push(student);
@@ -726,10 +757,13 @@
     }
     state.studentId = id;
     const progress = currentProgress();
-    if (profile.birthYear) progress.birthYear = Number(profile.birthYear);
     store.write(`elevspor.studentDevice.${id}`, access.device_token);
     saveProgress();
+    state.pendingStudentAccessSecret = "";
+    els.studentAccessCode.value = "";
     history.replaceState({}, "", location.pathname);
+    els.studentAccessStatus.dataset.status = "success";
+    els.studentAccessStatus.textContent = "Adgangen er godkendt. Åbner dit elevområde… ✓";
     await renderStudent();
   }
 
@@ -839,17 +873,27 @@
   }
 
   async function redeemStudentAccessFromHash() {
-    const match = location.hash.match(/^#\/elev-adgang\/([a-f0-9]{48})\/([A-Za-z0-9_-]+)$/);
-    if (!match) return false;
-    els.studentAccessStatus.textContent = "Åbner din sikre elevadgang…";
-    try {
-      await completeStudentAccess(match[1], decodeStudentAccessProfile(match[2]));
-      return true;
-    } catch (error) {
+    if (!location.hash.startsWith("#/elev-adgang")) return false;
+    const match = location.hash.match(/^#\/elev-adgang\/([a-f0-9]{48})$/);
+    history.replaceState({}, "", location.pathname);
+    showView("welcome");
+    els.studentAccessEntry.open = true;
+    els.manualStudentAccessFields.hidden = Boolean(match);
+    els.studentAccessCode.required = !match;
+    if (!match) {
+      state.pendingStudentAccessSecret = "";
       els.studentAccessStatus.dataset.status = "error";
-      els.studentAccessStatus.textContent = `Elevadgangen kunne ikke åbnes: ${error.message}`;
+      els.studentAccessStatus.textContent =
+        "Linket er ugyldigt. Skriv en engangskode, eller bed læreren om et nyt link.";
+      els.studentAccessCode.focus();
       return false;
     }
+    state.pendingStudentAccessSecret = match[1];
+    els.studentAccessStatus.dataset.status = "loading";
+    els.studentAccessStatus.textContent =
+      "Linket er klar. Skriv dit fornavn for at åbne elevområdet.";
+    els.studentAccessName.focus();
+    return true;
   }
 
   function showSchoolPage(name, options = {}) {
@@ -874,6 +918,103 @@
     if (name === "audit") void loadSchoolAudit();
   }
 
+  function setAdminOnboardingVisible(visible) {
+    els.adminOnboarding.hidden = !visible;
+    els.showAdminOnboarding.textContent = visible ? "Guiden er åben" : "Kom godt i gang";
+    els.showAdminOnboarding.disabled = visible;
+  }
+
+  function setTestCheck(indicator, textElement, status, message) {
+    indicator.dataset.status = status;
+    indicator.textContent = status === "complete" ? "✓" : status === "unknown" ? "?" : "○";
+    textElement.textContent = message;
+  }
+
+  function renderManualTestChecks() {
+    const context = state.testChecklistContext;
+    if (!context) return;
+    const saved = store.read(context.storageKey, {});
+    els.testCheckTeacherReview.checked = Boolean(saved.teacherReview);
+    els.testCheckAuditReview.checked = Boolean(saved.auditReview);
+    const complete = els.testCheckTeacherReview.checked && els.testCheckAuditReview.checked;
+    els.testCheckReview.dataset.status = complete ? "complete" : "manual";
+    els.testCheckReview.textContent = complete ? "✓" : "○";
+  }
+
+  async function refreshTestChecklist() {
+    const context = state.testChecklistContext;
+    if (!context) return;
+    els.refreshTestChecklist.disabled = true;
+    els.testChecklistStatus.dataset.status = "loading";
+    els.testChecklistStatus.textContent = "Kontrollerer Test-Skoles aktuelle tilstand…";
+    const testEntry = context.entries.find(entry =>
+      entry.student.name.trim().toLocaleLowerCase("da") === "test-elev"
+    );
+    const approved = testEntry?.approval.status === "approved";
+    setTestCheck(
+      els.testCheckTeacher,
+      els.testCheckTeacherText,
+      approved ? "complete" : "pending",
+      !testEntry
+        ? "Test-Elev findes ikke på denne enhed. Opret profilen for at starte testen."
+        : approved
+          ? "Test-Elev er godkendt på Test-Skole."
+          : "Test-Elev mangler stadig lærerens godkendelse."
+    );
+    const activeDevice = approved && testEntry.devices.some(device => !device.revoked_at);
+    setTestCheck(
+      els.testCheckDevice,
+      els.testCheckDeviceText,
+      activeDevice ? "complete" : "pending",
+      activeDevice
+        ? "Serveren har fundet en aktiv enhed til Test-Elev."
+        : "Ingen aktiv enhed fundet. Indløs en ny QR-kode, link eller kode på elevens enhed."
+    );
+    if (!approved) {
+      setTestCheck(
+        els.testCheckActivity,
+        els.testCheckActivityText,
+        "pending",
+        "Aktivitet kan først kontrolleres, når Test-Elev er godkendt."
+      );
+      els.testChecklistStatus.dataset.status = "";
+      els.testChecklistStatus.textContent = "Testforløbet er ikke færdigt endnu.";
+      els.refreshTestChecklist.disabled = false;
+      renderManualTestChecks();
+      return;
+    }
+    try {
+      const activities = await globalThis.ElevsporSupabase.listStudentActivities([
+        testEntry.approval.student.id
+      ]);
+      const completed = activities.some(item => item.activity_type === "conversation_completed");
+      setTestCheck(
+        els.testCheckActivity,
+        els.testCheckActivityText,
+        completed ? "complete" : "pending",
+        completed
+          ? "Serveren har registreret en gennemført øvelse for Test-Elev."
+          : "Ingen gennemført øvelse fundet. Gennemfør en samtale på elevens enhed."
+      );
+      els.testChecklistStatus.dataset.status = completed && activeDevice ? "success" : "";
+      els.testChecklistStatus.textContent = completed && activeDevice
+        ? "De automatiske kontroller består. Afslut med de to tydeligt manuelle kontroller."
+        : "Testforløbet er ikke færdigt endnu.";
+    } catch (_) {
+      setTestCheck(
+        els.testCheckActivity,
+        els.testCheckActivityText,
+        "unknown",
+        "Aktiviteten kunne ikke kontrolleres lige nu. Ingen status er antaget."
+      );
+      els.testChecklistStatus.dataset.status = "error";
+      els.testChecklistStatus.textContent = "En læsekontrol fejlede. Prøv igen — checklisten har ikke ændret data.";
+    } finally {
+      els.refreshTestChecklist.disabled = false;
+      renderManualTestChecks();
+    }
+  }
+
   const AUDIT_ACTION_LABELS = Object.freeze({
     device_removed: "Enhed fjernet",
     student_deactivated: "Elev deaktiveret",
@@ -888,7 +1029,19 @@
   function renderSchoolAudit(events) {
     els.schoolAuditList.replaceChildren();
     if (!events.length) {
-      emptyStudentGroup(els.schoolAuditList, "Ingen ændringer matcher filtrene.");
+      const filtersActive = [
+        els.auditFrom.value,
+        els.auditTo.value,
+        els.auditActor.value,
+        els.auditStudent.value,
+        els.auditAction.value
+      ].some(Boolean);
+      emptyStudentGroup(
+        els.schoolAuditList,
+        filtersActive
+          ? "Ingen ændringer matcher filtrene. Nulstil filtrene for at se hele loggen."
+          : "Ingen administrative ændringer endnu. Loggen udfyldes, når elevadgang eller elevstatus ændres."
+      );
       return;
     }
     events.forEach(event => {
@@ -966,10 +1119,20 @@
     URL.revokeObjectURL(link.href);
   }
 
-  function emptyStudentGroup(container, message) {
-    const empty = document.createElement("p");
+  function emptyStudentGroup(container, message, action = null) {
+    const empty = document.createElement(action ? "div" : "p");
     empty.className = "student-list-empty";
-    empty.textContent = message;
+    const copy = document.createElement("span");
+    copy.textContent = message;
+    empty.append(copy);
+    if (action) {
+      const button = document.createElement("button");
+      button.className = "secondary-button";
+      button.type = "button";
+      button.textContent = action.label;
+      button.addEventListener("click", action.run);
+      empty.append(button);
+    }
     container.append(empty);
   }
 
@@ -1079,6 +1242,15 @@
     els.staffInvitationPanel.hidden = !canManageStaff;
     els.staffPageButton.hidden = !canManageStaff;
     els.auditPageButton.hidden = !canManageStaff;
+    els.showAdminOnboarding.hidden = !canManageStaff;
+    if (canManageStaff) {
+      const onboardingKey = adminOnboardingStorageKey(membership.school_id, session.user.id);
+      setAdminOnboardingVisible(!store.read(onboardingKey, false));
+      els.dismissAdminOnboarding.dataset.storageKey = onboardingKey;
+    } else {
+      setAdminOnboardingVisible(false);
+      els.dismissAdminOnboarding.dataset.storageKey = "";
+    }
     page = page
       || schoolPageFromHash(location.hash)
       || store.read("elevspor.lastSchoolPage", "students");
@@ -1125,10 +1297,30 @@
     })));
     entries.sort((a, b) => a.student.name.localeCompare(b.student.name, "da"))
       .forEach(entry => els.allStudentList.append(renderStudentAdminCard(entry)));
-    if (!pending.length) emptyStudentGroup(els.pendingStudentList, "Ingen elever venter på godkendelse.");
-    if (!approved.length) emptyStudentGroup(els.recentStudentList, "Ingen elever er godkendt endnu.");
-    if (!entries.length) emptyStudentGroup(els.allStudentList, "Der er endnu ingen elever på denne enhed.");
+    if (!pending.length) emptyStudentGroup(
+      els.pendingStudentList,
+      "Alt er behandlet — ingen elever venter på godkendelse."
+    );
+    if (!approved.length) emptyStudentGroup(
+      els.recentStudentList,
+      "Ingen elever er godkendt endnu. Godkend en elev ovenfor, så vises eleven her."
+    );
+    if (!entries.length) emptyStudentGroup(
+      els.allStudentList,
+      "Skolen har ingen elever på denne enhed endnu.",
+      { label: "Opret den første elev", run: () => showSchoolPage("create-student") }
+    );
     els.studentSearch.value = "";
+    els.studentSearchEmpty.hidden = true;
+    const showTestChecklist = canManageStaff && isTestSchool(membership.schools?.name);
+    els.testSchoolChecklist.hidden = !showTestChecklist;
+    state.testChecklistContext = showTestChecklist
+      ? {
+          entries,
+          storageKey: testChecklistStorageKey(membership.school_id, session.user.id)
+        }
+      : null;
+    if (showTestChecklist) void refreshTestChecklist();
     showSchoolPage(page, { replace: Boolean(schoolPageFromHash(location.hash)) });
     showView("school-dashboard");
     const highlighted = document.querySelector(".new-student-highlight");
@@ -1557,23 +1749,39 @@
   });
   els.studentSearch.addEventListener("input", () => {
     const query = els.studentSearch.value.trim().toLocaleLowerCase("da");
-    Array.from(els.allStudentList.querySelectorAll(".student-admin-card")).forEach(card => {
+    const cards = Array.from(els.allStudentList.querySelectorAll(".student-admin-card"));
+    let visible = 0;
+    cards.forEach(card => {
       card.hidden = Boolean(query) && !card.textContent.toLocaleLowerCase("da").includes(query);
+      if (!card.hidden) visible += 1;
     });
+    els.studentSearchEmpty.hidden = !query || visible > 0;
   });
   els.studentAccessForm.addEventListener("submit", async event => {
     event.preventDefault();
+    const secret = state.pendingStudentAccessSecret
+      || normalizeStudentAccessSecret(els.studentAccessCode.value);
+    if (!state.pendingStudentAccessSecret && secret.length !== 12) {
+      els.studentAccessStatus.dataset.status = "error";
+      els.studentAccessStatus.textContent =
+        "Koden skal have 12 bogstaver eller tal, fx AB12-CD34-EF56.";
+      els.studentAccessCode.focus();
+      return;
+    }
     els.redeemStudentAccess.disabled = true;
-    els.studentAccessStatus.textContent = "Kontrollerer elevkoden…";
+    els.studentAccessStatus.dataset.status = "loading";
+    els.studentAccessStatus.textContent = "Kontrollerer den sikre engangsadgang…";
     try {
-      await completeStudentAccess(els.studentAccessCode.value, {
+      await completeStudentAccess(secret, {
         name: els.studentAccessName.value.trim(),
-        avatar: "🎯",
-        profile: "Elevprofil"
+        avatar: "🎯"
       });
     } catch (error) {
       els.studentAccessStatus.dataset.status = "error";
-      els.studentAccessStatus.textContent = `Elevadgangen kunne ikke åbnes: ${error.message}`;
+      els.studentAccessStatus.textContent = studentAccessErrorMessage(
+        error,
+        typeof navigator === "undefined" || navigator.onLine !== false
+      );
     } finally {
       els.redeemStudentAccess.disabled = false;
     }
@@ -1780,6 +1988,41 @@
       els.openSchoolDashboard.disabled = false;
     }
   });
+  els.showAdminOnboarding.addEventListener("click", () => {
+    setAdminOnboardingVisible(true);
+    els.adminOnboarding.scrollIntoView({ block: "start", behavior: "smooth" });
+  });
+  document.querySelectorAll("[data-test-checklist-page]").forEach(button => {
+    button.addEventListener("click", () => showSchoolPage(button.dataset.testChecklistPage));
+  });
+  [els.testCheckTeacherReview, els.testCheckAuditReview].forEach(input => {
+    input.addEventListener("change", () => {
+      const context = state.testChecklistContext;
+      if (!context) return;
+      store.write(context.storageKey, {
+        teacherReview: els.testCheckTeacherReview.checked,
+        auditReview: els.testCheckAuditReview.checked
+      });
+      renderManualTestChecks();
+    });
+  });
+  els.resetTestChecklistManual.addEventListener("click", () => {
+    const context = state.testChecklistContext;
+    if (!context) return;
+    store.write(context.storageKey, {});
+    renderManualTestChecks();
+  });
+  els.refreshTestChecklist.addEventListener("click", () => void refreshTestChecklist());
+  els.dismissAdminOnboarding.addEventListener("click", () => {
+    const storageKey = els.dismissAdminOnboarding.dataset.storageKey;
+    if (storageKey) store.write(storageKey, true);
+    setAdminOnboardingVisible(false);
+  });
+  els.startAdminOnboarding.addEventListener("click", () => {
+    showSchoolPage("create-student");
+    els.createStudentForm.scrollIntoView({ block: "start", behavior: "smooth" });
+    els.newStudentName.focus();
+  });
   els.schoolSignup.addEventListener("click", async () => {
     const accessParams = new URLSearchParams(location.search);
     const inviteToken = accessParams.get("invite");
@@ -1821,6 +2064,7 @@
       url.hash = "";
       url.searchParams.set("invite", token);
       els.staffInvitationLink.value = url.toString();
+      els.staffInvitationEmpty.hidden = true;
       els.staffInvitationResult.hidden = false;
       els.staffInvitationStatus.textContent = "Invitationen er klar og udløber efter 7 dage.";
     } catch (error) {
