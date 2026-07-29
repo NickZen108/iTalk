@@ -49,7 +49,8 @@ select is(
   false, 'pupil is inactive'
 );
 select isnt(
-  (select revoked_at from public.student_devices where id = 'a5200000-0000-0000-0000-000000000001'),
+  (select revoked_at from public.list_student_devices('a5100000-0000-0000-0000-000000000001')
+   where id = 'a5200000-0000-0000-0000-000000000001'),
   null::timestamptz, 'deactivation revokes every active device'
 );
 select lives_ok(
@@ -61,7 +62,8 @@ select is(
   true, 'reactivated pupil is active'
 );
 select isnt(
-  (select revoked_at from public.student_devices where id = 'a5200000-0000-0000-0000-000000000001'),
+  (select revoked_at from public.list_student_devices('a5100000-0000-0000-0000-000000000001')
+   where id = 'a5200000-0000-0000-0000-000000000001'),
   null::timestamptz, 'reactivation does not silently restore old device access'
 );
 select throws_ok(
@@ -89,7 +91,7 @@ select is(
   0, 'pupil row is deleted'
 );
 select is(
-  (select count(*)::integer from public.student_devices where student_id = 'a5100000-0000-0000-0000-000000000001'),
+  (select count(*)::integer from public.list_student_devices('a5100000-0000-0000-0000-000000000001')),
   0, 'pupil devices are cascade deleted'
 );
 
