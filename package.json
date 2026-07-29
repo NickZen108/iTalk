@@ -14,7 +14,8 @@
     "@capacitor/android": "^7.4.2",
     "@capacitor/cli": "^7.4.2",
     "@capacitor/core": "^7.4.2",
-    "@supabase/supabase-js": "^2.110.9"
+    "@supabase/supabase-js": "^2.110.9",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "esbuild": "^0.25.12"

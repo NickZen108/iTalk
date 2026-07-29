@@ -23,6 +23,10 @@ const reliableStudentSql = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20260729111500_reliable_student_creation.sql"),
   "utf8"
 );
+const studentDeviceSql = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20260729162500_student_device_access.sql"),
+  "utf8"
+);
 
 test("backend-migrationen har de nødvendige tenant-tabeller", () => {
   [
@@ -215,4 +219,15 @@ test("den offentlige brugerflade viser kun signup via invitationslink", () => {
   assert.match(app, /accessParams\.get\("invite"\)/);
   assert.match(app, /rememberStaffAccessFromUrl\(\);\s+await globalThis\.ElevsporSupabase\.signIn/);
   assert.match(app, /claimSchoolInvitation/);
+});
+
+test("elevadgang bruger engangskoder og tilbagekaldelige pseudonyme enheder", () => {
+  assert.match(studentDeviceSql, /create table public\.student_access_grants/);
+  assert.match(studentDeviceSql, /create table public\.student_devices/);
+  assert.match(studentDeviceSql, /expires_at timestamptz not null default \(now\(\) \+ interval '15 minutes'\)/);
+  assert.match(studentDeviceSql, /redeemed_at is null/);
+  assert.match(studentDeviceSql, /grant execute on function public\.redeem_student_access\(text\) to anon, authenticated/);
+  assert.match(studentDeviceSql, /revoked_at is null/);
+  assert.match(studentDeviceSql, /access_grant\.student_id/);
+  assert.doesNotMatch(studentDeviceSql, /\b(?:student_name|email|birth_year)\b/i);
 });

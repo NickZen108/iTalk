@@ -4,7 +4,7 @@ const {
   FACTORS, STUDENTS, SCENARIOS, clampLevel, describeFactor,
   defaultLevels, topicProgress, updateRecords, createProgress, chronologicalAge, effectiveAge, rememberTopic,
   createCustomScenario, getInitiator, isConversationPassed, chooseReply,
-  schoolPageFromHash, schoolHashForPage
+  schoolPageFromHash, schoolHashForPage, studentIdentityLabel
 } = require("../app.js");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -154,7 +154,7 @@ test("indloggede medarbejdere kan ikke strande på forsiden", () => {
   assert.match(app, /if \(membership\) \{[\s\S]*openSchoolDashboard\.hidden = false;[\s\S]*await renderSchoolDashboard\(\)/);
   assert.match(app, /openSchoolDashboard\.addEventListener\("click"[\s\S]*await renderSchoolDashboard\(\)/);
   assert.match(app, /els\.home\.addEventListener\("click", async[\s\S]*if \(session\)[\s\S]*await renderSchoolDashboard\(\)/);
-  assert.match(app, /showView\("welcome"\);\s+void refreshSchoolSession\(\);/);
+  assert.match(app, /showView\("welcome"\);[\s\S]*void refreshSchoolSession\(\);/);
   assert.doesNotMatch(app, /void refreshSchoolSession\(\);\s+showView\("welcome"\);/);
 });
 
@@ -172,4 +172,30 @@ test("lærerområdets undersider har stabile URL'er", () => {
   assert.match(app, /window\.addEventListener\("popstate"/);
   assert.match(app, /history\.pushState/);
   assert.match(app, /schoolPageFromHash\(location\.hash\)[\s\S]*elevspor\.lastSchoolPage/);
+});
+
+test("elever med samme navn kan skelnes uden at navnet bliver identitet", () => {
+  assert.equal(
+    studentIdentityLabel({ name: "Emma", localLabel: "4.A" }, 2014),
+    "Emma · 4.A · 2014"
+  );
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.match(html, /id="new-student-label"/);
+  assert.match(app, /sameNameStudents/);
+  assert.match(app, /Der findes allerede en elev med navnet/);
+  assert.match(app, /student\.id/);
+});
+
+test("elevadgang kan åbnes med QR, link eller kode", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.match(html, /id="student-access-qr"/);
+  assert.match(html, /id="student-access-link"/);
+  assert.match(html, /id="generated-student-access-code"/);
+  assert.match(html, /id="student-access-code"/);
+  assert.match(app, /createStudentAccess/);
+  assert.match(app, /redeemStudentAccessFromHash/);
+  assert.match(app, /recordStudentDeviceActivity/);
+  assert.match(app, /elevspor\.studentDevice/);
 });

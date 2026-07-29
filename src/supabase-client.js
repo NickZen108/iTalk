@@ -127,6 +127,44 @@ async function approveStudent(studentId) {
   return data;
 }
 
+async function createStudentAccess(studentId) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("create_student_access", {
+    target_student_id: studentId
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function redeemStudentAccess(secret) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("redeem_student_access", {
+    access_secret: secret
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function getStudentDeviceStatus(deviceToken) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("student_device_status", {
+    device_token: deviceToken
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function recordStudentDeviceActivity(deviceToken, activityType, durationSeconds) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("record_student_device_activity", {
+    device_token: deviceToken,
+    requested_activity_type: activityType,
+    requested_duration_seconds: durationSeconds ?? null
+  });
+  if (error) throw error;
+  return data;
+}
+
 async function recordActivity(localId, activityType, durationSeconds, birthYear) {
   const supabase = await requireClient();
   const session = await getSession();
@@ -176,6 +214,10 @@ globalThis.ElevsporSupabase = {
   ensureStudent,
   getStudentApproval,
   approveStudent,
+  createStudentAccess,
+  redeemStudentAccess,
+  getStudentDeviceStatus,
+  recordStudentDeviceActivity,
   recordActivity,
   monthlyUsage,
   hashLocalReference

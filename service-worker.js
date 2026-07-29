@@ -1,10 +1,11 @@
-const CACHE = "elevspor-v15";
+const CACHE = "elevspor-v16";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./runtime-config.js",
   "./supabase-client.js",
+  "./qr-code.js",
   "./app.js",
   "./manifest.webmanifest",
   "./icons/icon.svg",

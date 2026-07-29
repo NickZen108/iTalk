@@ -84,4 +84,13 @@ buildSync({
   minify: true,
   sourcemap: false
 });
+buildSync({
+  entryPoints: [path.join(root, "src", "qr-code.js")],
+  outfile: path.join(dist, "qr-code.js"),
+  bundle: true,
+  format: "iife",
+  platform: "browser",
+  minify: true,
+  sourcemap: false
+});
 console.log(`Elevspor bygget: ${path.relative(root, dist)}`);

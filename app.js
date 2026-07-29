@@ -316,11 +316,18 @@
     return SCHOOL_ROUTES[page] ? `#${SCHOOL_ROUTES[page]}` : "";
   }
 
+  function studentIdentityLabel(student, birthYear = "") {
+    const parts = [student.name];
+    if (student.localLabel) parts.push(student.localLabel);
+    if (birthYear) parts.push(String(birthYear));
+    return parts.join(" · ");
+  }
+
   const api = {
     FACTORS, STUDENTS, SCENARIOS, clampLevel, describeFactor,
     defaultLevels, topicProgress, updateRecords, createProgress, chronologicalAge, effectiveAge, rememberTopic,
     createCustomScenario, getInitiator, isConversationPassed, chooseReply,
-    schoolPageFromHash, schoolHashForPage
+    schoolPageFromHash, schoolHashForPage, studentIdentityLabel
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.iTalkCore = api;
@@ -416,6 +423,7 @@
     createStudentForm: $("#create-student-form"),
     newStudentName: $("#new-student-name"),
     newStudentBirthYear: $("#new-student-birth-year"),
+    newStudentLabel: $("#new-student-label"),
     createStudentButton: $("#create-student-button"),
     createStudentStatus: $("#create-student-status"),
     schoolPages: Array.from(document.querySelectorAll(".school-page")),
@@ -439,6 +447,22 @@
     staffInvitationStatus: $("#staff-invitation-status"),
     copyStaffInvitation: $("#copy-staff-invitation")
   };
+  Object.assign(els, {
+    studentAccessForm: $("#student-access-form"),
+    studentAccessName: $("#student-access-name"),
+    studentAccessCode: $("#student-access-code"),
+    studentAccessStatus: $("#student-access-status"),
+    redeemStudentAccess: $("#redeem-student-access"),
+    studentAccessDialog: $("#student-access-dialog"),
+    studentAccessTitle: $("#student-access-title"),
+    studentAccessQr: $("#student-access-qr"),
+    studentAccessLink: $("#student-access-link"),
+    generatedStudentAccessCode: $("#generated-student-access-code"),
+    generatedStudentAccessStatus: $("#generated-student-access-status"),
+    copyStudentAccessLink: $("#copy-student-access-link"),
+    copyStudentAccessCode: $("#copy-student-access-code"),
+    closeStudentAccess: $("#close-student-access")
+  });
   Object.assign(els, {
     setupIcon: $("#setup-scenario-icon"),
     setupTitle: $("#setup-scenario-title"),
@@ -485,11 +509,20 @@
     return id;
   }
 
+  function studentDeviceToken(studentId) {
+    return store.read(`elevspor.studentDevice.${studentId}`, "");
+  }
+
   async function recordBackendActivity(type, durationSeconds) {
     const backend = globalThis.ElevsporSupabase;
     const progress = currentProgress();
     if (!backend?.configured || !state.studentId || !progress) return;
     try {
+      const deviceToken = studentDeviceToken(state.studentId);
+      if (deviceToken) {
+        await backend.recordStudentDeviceActivity(deviceToken, type, durationSeconds);
+        return;
+      }
       await backend.recordActivity(
         backendLocalStudentId(state.studentId),
         type,
@@ -505,8 +538,20 @@
     const backend = globalThis.ElevsporSupabase;
     const progress = currentProgress();
     if (!backend?.configured) return { status: "unavailable", message: "Skolens forbindelse er ikke konfigureret." };
-    if (!await backend.getSession()) return { status: "unavailable", message: "En medarbejder skal logge skolen ind på enheden først." };
     try {
+      const deviceToken = studentDeviceToken(state.studentId);
+      if (deviceToken) {
+        const device = await backend.getStudentDeviceStatus(deviceToken);
+        state.approval = { approval_status: device.status, id: device.student_id };
+        return {
+          status: device.status,
+          student: state.approval,
+          message: "Din enhed er godkendt. Du kan gå i gang."
+        };
+      }
+      if (!await backend.getSession()) {
+        return { status: "unavailable", message: "Brug din elevkode eller bed en lærer om at åbne elevområdet." };
+      }
       const student = await backend.getStudentApproval(
         backendLocalStudentId(state.studentId),
         progress.birthYear || null
@@ -566,6 +611,94 @@
     store.write("elevspor.localStudents", STUDENTS);
   }
 
+  function encodeStudentAccessProfile(profile) {
+    const bytes = new TextEncoder().encode(JSON.stringify(profile));
+    let binary = "";
+    bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  function decodeStudentAccessProfile(value) {
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const binary = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="));
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, char => char.charCodeAt(0))));
+  }
+
+  async function openStudentAccess(student, backendStudentId, button) {
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = "Opretter adgang…";
+    try {
+      const access = await globalThis.ElevsporSupabase.createStudentAccess(backendStudentId);
+      const progress = state.progress[student.id] || {};
+      const profile = encodeStudentAccessProfile({
+        id: student.id,
+        name: student.name,
+        avatar: student.avatar,
+        profile: student.profile,
+        birthYear: progress.birthYear || ""
+      });
+      const url = new URL(location.href);
+      url.search = "";
+      url.hash = `/elev-adgang/${access.token}/${profile}`;
+      const link = url.toString();
+      els.studentAccessTitle.textContent = `Elevadgang til ${studentIdentityLabel(student, progress.birthYear)}`;
+      els.studentAccessLink.value = link;
+      els.generatedStudentAccessCode.textContent = access.code;
+      els.studentAccessQr.src = await globalThis.ElevsporQr.toDataUrl(link);
+      els.generatedStudentAccessStatus.textContent = "Adgangen er klar og udløber om 15 minutter.";
+      if (typeof els.studentAccessDialog.showModal === "function") els.studentAccessDialog.showModal();
+      else els.studentAccessDialog.setAttribute("open", "");
+    } catch (error) {
+      button.textContent = `Adgang mislykkedes: ${error.message}`;
+    } finally {
+      button.disabled = false;
+      if (button.textContent === "Opretter adgang…") button.textContent = originalText;
+    }
+  }
+
+  async function completeStudentAccess(secret, profile) {
+    const access = await globalThis.ElevsporSupabase.redeemStudentAccess(secret);
+    const id = profile.id || (
+      typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
+    let student = STUDENTS.find(item => item.id === id);
+    if (!student) {
+      student = {
+        id,
+        name: profile.name,
+        avatar: profile.avatar || "🎯",
+        profile: profile.profile || "Elevprofil",
+        levels: defaultLevels()
+      };
+      STUDENTS.push(student);
+      saveLocalStudents();
+    }
+    state.studentId = id;
+    const progress = currentProgress();
+    if (profile.birthYear) progress.birthYear = Number(profile.birthYear);
+    store.write(`elevspor.studentDevice.${id}`, access.device_token);
+    saveProgress();
+    history.replaceState({}, "", location.pathname);
+    await renderStudent();
+  }
+
+  async function redeemStudentAccessFromHash() {
+    const match = location.hash.match(/^#\/elev-adgang\/([a-f0-9]{48})\/([A-Za-z0-9_-]+)$/);
+    if (!match) return false;
+    els.studentAccessStatus.textContent = "Åbner din sikre elevadgang…";
+    try {
+      await completeStudentAccess(match[1], decodeStudentAccessProfile(match[2]));
+      return true;
+    } catch (error) {
+      els.studentAccessStatus.dataset.status = "error";
+      els.studentAccessStatus.textContent = `Elevadgangen kunne ikke åbnes: ${error.message}`;
+      return false;
+    }
+  }
+
   function showSchoolPage(name, options = {}) {
     if (!SCHOOL_ROUTES[name]) name = "students";
     if (name === "staff" && !state.canManageStaff) name = "students";
@@ -602,6 +735,8 @@
       card.classList.add("new-student-highlight");
       card.id = "newly-created-student";
     }
+    const progress = state.progress[student.id] || {};
+    const identity = studentIdentityLabel(student, progress.birthYear);
     const status = approval.status === "approved"
       ? "Godkendt"
       : approval.status === "pending"
@@ -609,6 +744,7 @@
         : approval.message;
     card.innerHTML = `
       <div><strong>${student.avatar} ${student.name}</strong>
+      <span class="student-identity-label">${identity}</span>
       <p>${status}</p></div>
       <div class="student-admin-actions"></div>`;
     const actions = card.querySelector(".student-admin-actions");
@@ -631,6 +767,14 @@
         }
       });
       actions.append(approve);
+    }
+    if (approval.status === "approved") {
+      const accessButton = document.createElement("button");
+      accessButton.className = "primary-button";
+      accessButton.type = "button";
+      accessButton.textContent = "Opret elevadgang";
+      accessButton.addEventListener("click", () => void openStudentAccess(student, approval.student.id, accessButton));
+      actions.append(accessButton);
     }
     const pupilButton = document.createElement("button");
     pupilButton.className = "secondary-button";
@@ -1033,11 +1177,30 @@
     event.preventDefault();
     const name = els.newStudentName.value.trim();
     const birthYear = Number(els.newStudentBirthYear.value);
+    const localLabel = els.newStudentLabel.value.trim();
     const currentYear = new Date().getFullYear();
     if (!name || !Number.isInteger(birthYear) || birthYear < 1926 || birthYear > currentYear) {
       els.createStudentStatus.dataset.status = "error";
       els.createStudentStatus.textContent = `Skriv et navn og et fødselsår mellem 1926 og ${currentYear}.`;
       els.createStudentStatus.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      return;
+    }
+    const sameNameStudents = STUDENTS.filter(student =>
+      student.name.localeCompare(name, "da", { sensitivity: "base" }) === 0
+    );
+    if (sameNameStudents.length && !localLabel) {
+      els.createStudentStatus.dataset.status = "error";
+      els.createStudentStatus.textContent =
+        `Der findes allerede en elev med navnet ${name}. Tilføj klasse/hold eller et andet lokalt kendetegn.`;
+      els.newStudentLabel.focus();
+      return;
+    }
+    if (localLabel && sameNameStudents.some(student =>
+      (student.localLabel || "").localeCompare(localLabel, "da", { sensitivity: "base" }) === 0
+    )) {
+      els.createStudentStatus.dataset.status = "error";
+      els.createStudentStatus.textContent = `${name} · ${localLabel} findes allerede. Vælg et andet kendetegn.`;
+      els.newStudentLabel.focus();
       return;
     }
     els.createStudentButton.disabled = true;
@@ -1055,6 +1218,7 @@
       const student = {
         id,
         name,
+        localLabel,
         avatar: "🎯",
         profile: "Ny elevprofil",
         levels: defaultLevels()
@@ -1107,6 +1271,32 @@
     Array.from(els.allStudentList.querySelectorAll(".student-admin-card")).forEach(card => {
       card.hidden = Boolean(query) && !card.textContent.toLocaleLowerCase("da").includes(query);
     });
+  });
+  els.studentAccessForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    els.redeemStudentAccess.disabled = true;
+    els.studentAccessStatus.textContent = "Kontrollerer elevkoden…";
+    try {
+      await completeStudentAccess(els.studentAccessCode.value, {
+        name: els.studentAccessName.value.trim(),
+        avatar: "🎯",
+        profile: "Elevprofil"
+      });
+    } catch (error) {
+      els.studentAccessStatus.dataset.status = "error";
+      els.studentAccessStatus.textContent = `Elevadgangen kunne ikke åbnes: ${error.message}`;
+    } finally {
+      els.redeemStudentAccess.disabled = false;
+    }
+  });
+  els.closeStudentAccess.addEventListener("click", () => els.studentAccessDialog.close());
+  els.copyStudentAccessLink.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(els.studentAccessLink.value);
+    els.generatedStudentAccessStatus.textContent = "Engangslinket er kopieret ✓";
+  });
+  els.copyStudentAccessCode.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(els.generatedStudentAccessCode.textContent);
+    els.generatedStudentAccessStatus.textContent = "Engangskoden er kopieret ✓";
   });
   function sendStudentMessage() {
     const text = els.chatInput.value.trim();
@@ -1323,6 +1513,7 @@
   });
 
   showView("welcome");
+  void redeemStudentAccessFromHash();
   void refreshSchoolSession();
 
   if ("serviceWorker" in navigator) {

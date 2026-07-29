@@ -28,6 +28,18 @@
       <h1>Log ind på Elevspor</h1>
       <p>Lærere opretter og godkender elever fra skolens sikre lærerområde.</p>
       <div class="privacy-note"><span aria-hidden="true">🔒</span> Elevnavne, elevfotos og samtaleindhold sendes ikke til Supabase.</div>
+      <details class="settings student-access-entry">
+        <summary>Jeg er elev og har en kode</summary>
+        <form id="student-access-form" class="settings-body">
+          <label for="student-access-name">Dit fornavn</label>
+          <input id="student-access-name" maxlength="80" autocomplete="given-name" required>
+          <label for="student-access-code">Engangskode</label>
+          <input id="student-access-code" maxlength="14" autocomplete="one-time-code"
+                 autocapitalize="characters" spellcheck="false" placeholder="AB12-CD34-EF56" required>
+          <button id="redeem-student-access" class="primary-button" type="submit">Åbn mit elevområde</button>
+          <p id="student-access-status" class="save-status" aria-live="polite"></p>
+        </form>
+      </details>
       <details class="settings school-access" open>
         <summary>Skolens sikre login</summary>
         <div class="settings-body">
@@ -109,6 +121,8 @@
           <input id="new-student-name" maxlength="80" autocomplete="off" required>
           <label for="new-student-birth-year">Fødselsår</label>
           <input id="new-student-birth-year" type="number" min="1926" max="2026" inputmode="numeric" required>
+          <label for="new-student-label">Klasse/hold eller andet kendetegn <span class="hint">(kun lærerområdet)</span></label>
+          <input id="new-student-label" maxlength="40" autocomplete="off" placeholder="Fx 4.A eller Hold blå">
           <button id="create-student-button" class="primary-button" type="submit">Opret elev til godkendelse</button>
           <p id="create-student-status" class="save-status" aria-live="polite"></p>
         </form>
@@ -314,10 +328,34 @@
         <button class="primary-button" type="submit">Tilføj emne</button>
       </form>
     </dialog>
+
+    <dialog id="student-access-dialog" class="topic-dialog student-access-dialog">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">Sikker elevadgang</p><h2 id="student-access-title">Åbn på elevens enhed</h2></div>
+        <button id="close-student-access" class="secondary-button" type="button">Luk</button>
+      </div>
+      <p>Adgangen virker én gang og udløber efter 15 minutter.</p>
+      <div class="student-access-options">
+        <div class="student-access-qr">
+          <img id="student-access-qr" alt="QR-kode til elevadgang">
+          <small>Scan med mobil eller tablet</small>
+        </div>
+        <div class="student-access-details">
+          <label for="student-access-link">Engangslink</label>
+          <input id="student-access-link" readonly>
+          <button id="copy-student-access-link" class="secondary-button" type="button">Kopiér link</button>
+          <label for="generated-student-access-code">Kode til laptop uden kamera</label>
+          <output id="generated-student-access-code" class="access-code"></output>
+          <button id="copy-student-access-code" class="secondary-button" type="button">Kopiér kode</button>
+          <p id="generated-student-access-status" class="save-status" aria-live="polite"></p>
+        </div>
+      </div>
+    </dialog>
   </main>
 
   <script src="runtime-config.js"></script>
   <script src="supabase-client.js"></script>
+  <script src="qr-code.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
