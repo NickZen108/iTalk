@@ -30,7 +30,11 @@ insert into access_test_state (grant_data)
 select public.create_student_access('f1000000-0000-0000-0000-000000000001');
 
 select ok((select grant_data ? 'token' from access_test_state), 'teacher receives an opaque access token');
-select like((select grant_data ->> 'code' from access_test_state), '____-____-____', 'teacher receives a grouped fallback code');
+select matches(
+  (select grant_data ->> 'code' from access_test_state),
+  '^[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}$',
+  'teacher receives a grouped fallback code'
+);
 select throws_ok(
   $$select public.create_student_access('f1000000-0000-0000-0000-000000000002')$$,
   'P0001', 'Approved pupil not found in your school',
