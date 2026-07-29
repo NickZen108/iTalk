@@ -384,6 +384,7 @@
     resultStats: $("#result-stats"),
     resultHome: $("#result-home"),
     schoolSessionStatus: $("#school-session-status"),
+    openSchoolDashboard: $("#open-school-dashboard"),
     schoolLoginForm: $("#school-login-form"),
     schoolEmail: $("#school-email"),
     schoolPassword: $("#school-password"),
@@ -922,7 +923,14 @@
     showView("result");
   }
 
-  els.home.addEventListener("click", () => selectStudent(""));
+  els.home.addEventListener("click", async () => {
+    const session = await globalThis.ElevsporSupabase?.getSession();
+    if (session) {
+      await renderSchoolDashboard();
+      return;
+    }
+    selectStudent("");
+  });
   els.chooseStudent.addEventListener("click", () => { void renderStudent(); });
   els.chooseTeacher.addEventListener("click", () => { void renderTeacher(); });
   document.querySelectorAll("[data-back]").forEach(button => {
@@ -1127,6 +1135,7 @@
     if (!backend?.configured) {
       els.schoolSessionStatus.textContent = "Supabase er ikke konfigureret i denne udgave.";
       els.schoolLoginForm.hidden = false;
+      els.openSchoolDashboard.hidden = true;
       return;
     }
     try {
@@ -1134,6 +1143,7 @@
       if (!session) {
         els.schoolSessionStatus.textContent = "Ikke logget ind.";
         els.schoolLoginForm.hidden = false;
+        els.openSchoolDashboard.hidden = true;
         const accessParams = new URLSearchParams(location.search);
         els.invitedSignupPanel.hidden = !accessParams.has("invite") && !accessParams.has("bootstrap");
         els.schoolSignout.hidden = true;
@@ -1145,9 +1155,11 @@
       if (membership) {
         const schoolName = membership.schools?.name || "skolen";
         els.schoolSessionStatus.textContent = `Forbundet til ${schoolName} · ${membership.role}`;
+        els.openSchoolDashboard.hidden = false;
         els.invitedSignupPanel.hidden = true;
         await renderSchoolDashboard();
       } else {
+        els.openSchoolDashboard.hidden = true;
         const pendingAccess = store.read("elevspor.pendingStaffAccess", null);
         if (!pendingAccess?.token) {
           els.schoolSessionStatus.textContent = "Kontoen er ikke knyttet til en skole. Kontakt skoleadministratoren.";
@@ -1192,6 +1204,14 @@
       await refreshSchoolSession();
     } catch (error) {
       els.schoolSessionStatus.textContent = `Login mislykkedes: ${error.message}`;
+    }
+  });
+  els.openSchoolDashboard.addEventListener("click", async () => {
+    els.openSchoolDashboard.disabled = true;
+    try {
+      await renderSchoolDashboard();
+    } finally {
+      els.openSchoolDashboard.disabled = false;
     }
   });
   els.schoolSignup.addEventListener("click", async () => {
@@ -1258,8 +1278,8 @@
     await refreshSchoolSession();
   });
 
-  void refreshSchoolSession();
   showView("welcome");
+  void refreshSchoolSession();
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", async () => {

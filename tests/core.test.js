@@ -145,3 +145,14 @@ test("elevadministration er opdelt i egne sider og prioriterer godkendelser", ()
   assert.match(app, /renderSchoolDashboard\("students", id\)/);
   assert.match(app, /new-student-highlight/);
 });
+
+test("indloggede medarbejdere kan ikke strande på forsiden", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.match(html, /id="open-school-dashboard"[^>]*hidden[^>]*>Gå til lærerområdet/);
+  assert.match(app, /if \(membership\) \{[\s\S]*openSchoolDashboard\.hidden = false;[\s\S]*await renderSchoolDashboard\(\)/);
+  assert.match(app, /openSchoolDashboard\.addEventListener\("click"[\s\S]*await renderSchoolDashboard\(\)/);
+  assert.match(app, /els\.home\.addEventListener\("click", async[\s\S]*if \(session\)[\s\S]*await renderSchoolDashboard\(\)/);
+  assert.match(app, /showView\("welcome"\);\s+void refreshSchoolSession\(\);/);
+  assert.doesNotMatch(app, /void refreshSchoolSession\(\);\s+showView\("welcome"\);/);
+});
