@@ -13,6 +13,8 @@ Supabase Free Plan og kan senere flyttes til en betalt Supabase-plan uden
   rollen `owner`, `admin` eller `teacher`.
 - `school_invitations`: tidsbegrænsede invitationer. Kun SHA-256-hash af
   e-mail og token gemmes.
+- `school_bootstraps`: kortlivede, operatøroprettede links til den første
+  owner på en ny skole. Kun hashes gemmes.
 - `students`: anonym backendprofil. Navn og profilfoto må ikke sendes til
   Supabase; appen kobler sin lokale profil til `local_reference_hash`.
   Nye elever oprettes som `pending` og inaktive, indtil en medarbejder fra
@@ -76,6 +78,9 @@ Repository Secrets:
 
 - `SUPABASE_ACCESS_TOKEN`: Supabase Personal Access Token til CLI-linkning.
 - `SUPABASE_DB_PASSWORD`: adgangskoden til projektets Postgres-database.
+- `ELEVSPOR_BOOTSTRAP_TOKEN`: et midlertidigt 48-tegns hex-token, når en ny
+  Test-Skole skal bootstrap'es. Tokenet udløber efter 24 timer og slettes
+  eller udskiftes efter brug.
 
 Workflowet viser aldrig værdierne, bruger ikke `set -x` og sender ikke
 hemmeligheder som kommandolinjeargumenter. GitHub maskerer desuden repository
@@ -110,16 +115,21 @@ lægges i frontend, repository, GitHub Variables, logs eller beskeder.
 11. Læg aldrig Personal Access Token, `service_role`/secret key,
     databaseadgangskode eller mailhemmeligheder i frontend eller repoet.
 
-## Login og onboarding
+## Login og invitationsbaseret onboarding
 
-1. Medarbejderen opretter Supabase Auth-login med e-mail og adgangskode.
-2. Første skoleejer kalder RPC `register_school('Skolens navn')`.
+1. Platformoperatøren opretter den første owner gennem det beskyttede
+   Test-Skole-bootstrap. Offentlige brugere kan ikke oprette skoler.
+2. Supabases `Before User Created`-hook afviser alle medarbejderkonti uden
+   en gyldig invitation eller bootstrap.
 3. En owner/admin kalder `create_school_invitation(school_id, email, role)`.
    RPC'en returnerer invitationstokenet én gang.
-4. Den inviterede opretter login med samme e-mail og kalder
+4. Den inviterede åbner appens invitationslink, opretter login med samme
+   e-mail og appen kalder
    `claim_school_invitation(token)`.
 
 Tokenet udløber efter syv dage. Owner-rollen kan ikke uddeles via invitation.
+Roller kommer kun fra serverens `school_members`/invitationer; browseren kan
+ikke skrive direkte til medlemsroller. En bruger kan kun tilhøre én skole.
 
 ## Elevtilmelding og lærergodkendelse
 

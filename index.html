@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#315c54">
+  <meta name="theme-color" content="#33206f">
   <meta name="description" content="Elevspor – træning i hverdagssamtaler">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icons/icon.svg">
+  <link rel="icon" href="assets/elevspor-logo.png">
   <link rel="stylesheet" href="styles.css">
   <title>Elevspor – samtaletræning</title>
 </head>
@@ -17,8 +17,8 @@
   </div>
   <header class="topbar">
     <button id="home-button" class="brand" type="button" aria-label="Gå til start">
-      <span class="brand-mark" aria-hidden="true">•••</span>
-      <span>Elevspor</span>
+      <span class="brand-mark" aria-hidden="true"><img src="assets/elevspor-logo.png" alt=""></span>
+      <span>ElevSpor</span>
     </button>
   </header>
 
@@ -38,15 +38,14 @@
             <label for="school-password">Adgangskode</label>
             <input id="school-password" type="password" autocomplete="current-password" minlength="10" required>
             <div class="form-footer">
-              <button id="school-signup" class="secondary-button" type="button">Opret medarbejder</button>
               <button class="primary-button" type="submit">Log ind</button>
             </div>
           </form>
-          <form id="school-onboarding-form" hidden>
-            <label for="school-name">Skolens navn</label>
-            <input id="school-name" maxlength="120" required>
-            <button class="primary-button" type="submit">Registrér skole</button>
-          </form>
+          <div id="invited-signup-panel" class="invite-panel" hidden>
+            <p><strong>Du er inviteret som medarbejder</strong></p>
+            <p class="hint">Skriv den inviterede e-mail og vælg en adgangskode. Kontoen knyttes først til skolen, når invitationen er kontrolleret.</p>
+            <button id="school-signup" class="secondary-button" type="button">Opret inviteret konto</button>
+          </div>
           <button id="school-signout" class="secondary-button" type="button" hidden>Log ud</button>
         </div>
       </details>
@@ -62,6 +61,28 @@
         <button id="dashboard-signout" class="secondary-button" type="button">Log ud</button>
       </div>
       <div class="privacy-note"><span aria-hidden="true">🔒</span> Elevnavne bliver på denne enhed. Supabase modtager kun et anonymt elev-id.</div>
+      <section id="staff-invitation-panel" class="teacher-form staff-invitation-panel" hidden>
+        <div>
+          <p class="eyebrow">Medarbejdere</p>
+          <h2>Invitér en lærer</h2>
+        </div>
+        <form id="staff-invitation-form">
+          <label for="staff-invitation-email">Lærerens arbejdsmail</label>
+          <input id="staff-invitation-email" type="email" autocomplete="email" required>
+          <label for="staff-invitation-role">Rolle</label>
+          <select id="staff-invitation-role">
+            <option value="teacher">Lærer</option>
+            <option value="admin">Skoleadministrator</option>
+          </select>
+          <button class="primary-button" type="submit">Opret sikker invitation</button>
+        </form>
+        <div id="staff-invitation-result" class="invitation-result" hidden>
+          <label for="staff-invitation-link">Invitationslink</label>
+          <input id="staff-invitation-link" readonly>
+          <button id="copy-staff-invitation" class="secondary-button" type="button">Kopiér link</button>
+          <p id="staff-invitation-status" class="save-status" aria-live="polite"></p>
+        </div>
+      </section>
       <form id="create-student-form" class="teacher-form create-student-form">
         <h2>Opret elev</h2>
         <label for="new-student-name">Elevens navn</label>

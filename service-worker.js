@@ -1,4 +1,4 @@
-const CACHE = "elevspor-v11";
+const CACHE = "elevspor-v12";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,7 +7,8 @@ const ASSETS = [
   "./supabase-client.js",
   "./app.js",
   "./manifest.webmanifest",
-  "./icons/icon.svg"
+  "./icons/icon.svg",
+  "./assets/elevspor-logo.png"
 ];
 
 self.addEventListener("install", event => {

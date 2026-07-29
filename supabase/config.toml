@@ -17,9 +17,13 @@ port = 54323
 
 [auth]
 enabled = true
-site_url = "http://127.0.0.1:8080"
-additional_redirect_urls = ["https://nickzen108.github.io/iTalk/"]
+site_url = "https://nickzen108.github.io/iTalk/"
+additional_redirect_urls = ["http://127.0.0.1:8080"]
 enable_signup = true
+
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/public/hook_allow_invited_staff"
 
 [storage]
 enabled = true

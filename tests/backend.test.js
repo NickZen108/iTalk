@@ -15,6 +15,10 @@ const approvalSql = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20260728203000_student_teacher_approval.sql"),
   "utf8"
 );
+const inviteOnlySql = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20260729093000_invite_only_staff.sql"),
+  "utf8"
+);
 
 test("backend-migrationen har de nødvendige tenant-tabeller", () => {
   [
@@ -145,4 +149,32 @@ test("hostede migrationer bruger kun GitHub-secrets med nødvendige rettigheder"
   assert.doesNotMatch(workflow, /GRANT SELECT ON public\.schools TO anon/i);
   assert.doesNotMatch(workflow, /secrets\.(?:SERVICE_ROLE|SUPABASE_SECRET)/i);
   assert.doesNotMatch(workflow, /set -x/);
+});
+
+test("medarbejderoprettelse er invitationsbaseret og skole-bootstrap er beskyttet", () => {
+  assert.match(inviteOnlySql, /revoke execute on function public\.register_school\(text\) from authenticated/);
+  assert.match(inviteOnlySql, /grant execute on function public\.register_school\(text\) to service_role/);
+  assert.match(inviteOnlySql, /unique index if not exists school_members_one_school_per_user/);
+  assert.match(inviteOnlySql, /revoke update on public\.school_members from authenticated/);
+  assert.match(inviteOnlySql, /drop policy if exists members_admin_update/);
+  assert.match(inviteOnlySql, /create or replace function public\.hook_allow_invited_staff/);
+  assert.match(inviteOnlySql, /invitation\.accepted_at is null/);
+  assert.match(inviteOnlySql, /invitation\.expires_at > now\(\)/);
+  assert.match(inviteOnlySql, /to supabase_auth_admin/);
+  assert.match(inviteOnlySql, /revoke execute on function public\.hook_allow_invited_staff\(jsonb\)[\s\S]*from anon, authenticated, public/);
+  assert.match(inviteOnlySql, /create table public\.school_bootstraps/);
+  assert.match(inviteOnlySql, /grant execute on function public\.create_school_bootstrap\(text, text, text, text\) to service_role/);
+  assert.doesNotMatch(inviteOnlySql, /grant execute on function public\.create_school_bootstrap\(text, text, text, text\) to authenticated/);
+  assert.match(inviteOnlySql, /grant execute on function public\.claim_school_bootstrap\(text\) to authenticated/);
+});
+
+test("den offentlige brugerflade viser kun signup via invitationslink", () => {
+  const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(root, "app.js"), "utf8");
+  assert.doesNotMatch(html, />Opret medarbejder</);
+  assert.doesNotMatch(html, />Registrér skole</);
+  assert.match(html, />Opret inviteret konto</);
+  assert.match(app, /const accessParams = new URLSearchParams\(location\.search\)/);
+  assert.match(app, /accessParams\.get\("invite"\)/);
+  assert.match(app, /claimSchoolInvitation/);
 });

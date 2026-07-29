@@ -319,7 +319,14 @@
     }
   };
 
-  const localStudents = store.read("elevspor.localStudents", []);
+  const defaultTestStudent = {
+    id: "test-elev",
+    name: "Test-Elev",
+    avatar: "🧭",
+    profile: "Kontrolleret testprofil til elevvisningen.",
+    levels: defaultLevels()
+  };
+  const localStudents = store.read("elevspor.localStudents", [defaultTestStudent]);
   STUDENTS.splice(0, STUDENTS.length, ...(Array.isArray(localStudents) ? localStudents : []));
 
   const state = {
@@ -381,8 +388,7 @@
     schoolEmail: $("#school-email"),
     schoolPassword: $("#school-password"),
     schoolSignup: $("#school-signup"),
-    schoolOnboardingForm: $("#school-onboarding-form"),
-    schoolName: $("#school-name"),
+    invitedSignupPanel: $("#invited-signup-panel"),
     schoolSignout: $("#school-signout"),
     dashboardSignout: $("#dashboard-signout"),
     teacherProfileName: $("#teacher-profile-name"),
@@ -393,7 +399,15 @@
     teacherStudentList: $("#teacher-student-list"),
     studentApprovalPanel: $("#student-approval-panel"),
     teacherApprovalStatus: $("#teacher-approval-status"),
-    approveStudent: $("#approve-student")
+    approveStudent: $("#approve-student"),
+    staffInvitationPanel: $("#staff-invitation-panel"),
+    staffInvitationForm: $("#staff-invitation-form"),
+    staffInvitationEmail: $("#staff-invitation-email"),
+    staffInvitationRole: $("#staff-invitation-role"),
+    staffInvitationResult: $("#staff-invitation-result"),
+    staffInvitationLink: $("#staff-invitation-link"),
+    staffInvitationStatus: $("#staff-invitation-status"),
+    copyStaffInvitation: $("#copy-staff-invitation")
   };
   Object.assign(els, {
     setupIcon: $("#setup-scenario-icon"),
@@ -538,6 +552,7 @@
       || session.user.email?.split("@")[0]
       || "Lærer";
     els.teacherProfileName.textContent = `${displayName} · ${membership.schools?.name || "skolen"}`;
+    els.staffInvitationPanel.hidden = !["owner", "admin"].includes(membership.role);
     els.teacherStudentList.replaceChildren();
     if (!STUDENTS.length) {
       const empty = document.createElement("p");
@@ -1033,7 +1048,8 @@
       if (!session) {
         els.schoolSessionStatus.textContent = "Ikke logget ind.";
         els.schoolLoginForm.hidden = false;
-        els.schoolOnboardingForm.hidden = true;
+        const accessParams = new URLSearchParams(location.search);
+        els.invitedSignupPanel.hidden = !accessParams.has("invite") && !accessParams.has("bootstrap");
         els.schoolSignout.hidden = true;
         return;
       }
@@ -1043,11 +1059,23 @@
       if (membership) {
         const schoolName = membership.schools?.name || "skolen";
         els.schoolSessionStatus.textContent = `Forbundet til ${schoolName} · ${membership.role}`;
-        els.schoolOnboardingForm.hidden = true;
+        els.invitedSignupPanel.hidden = true;
         await renderSchoolDashboard();
       } else {
-        els.schoolSessionStatus.textContent = "Login er godkendt. Registrér skolen for at fortsætte.";
-        els.schoolOnboardingForm.hidden = false;
+        const pendingAccess = store.read("elevspor.pendingStaffAccess", null);
+        if (!pendingAccess?.token) {
+          els.schoolSessionStatus.textContent = "Kontoen er ikke knyttet til en skole. Kontakt skoleadministratoren.";
+          return;
+        }
+        els.schoolSessionStatus.textContent = "Kontrollerer invitation…";
+        if (pendingAccess.type === "bootstrap") {
+          await backend.claimSchoolBootstrap(pendingAccess.token);
+        } else {
+          await backend.claimSchoolInvitation(pendingAccess.token);
+        }
+        localStorage.removeItem("elevspor.pendingStaffAccess");
+        history.replaceState({}, "", location.pathname);
+        await refreshSchoolSession();
       }
     } catch (error) {
       els.schoolSessionStatus.textContent = `Forbindelsesfejl: ${error.message}`;
@@ -1069,9 +1097,20 @@
     }
   });
   els.schoolSignup.addEventListener("click", async () => {
+    const accessParams = new URLSearchParams(location.search);
+    const inviteToken = accessParams.get("invite");
+    const bootstrapToken = accessParams.get("bootstrap");
+    if (!inviteToken && !bootstrapToken) {
+      els.schoolSessionStatus.textContent = "En gyldig invitation er påkrævet.";
+      return;
+    }
     if (!els.schoolLoginForm.reportValidity()) return;
-    els.schoolSessionStatus.textContent = "Opretter medarbejder…";
+    els.schoolSessionStatus.textContent = "Kontrollerer invitation og opretter medarbejder…";
     try {
+      store.write("elevspor.pendingStaffAccess", {
+        type: bootstrapToken ? "bootstrap" : "invite",
+        token: bootstrapToken || inviteToken
+      });
       const result = await globalThis.ElevsporSupabase.signUp(
         els.schoolEmail.value.trim(),
         els.schoolPassword.value
@@ -1082,19 +1121,34 @@
         : "Medarbejderen er oprettet. Bekræft e-mailen, og log derefter ind.";
       await refreshSchoolSession();
     } catch (error) {
+      localStorage.removeItem("elevspor.pendingStaffAccess");
       els.schoolSessionStatus.textContent = `Oprettelse mislykkedes: ${error.message}`;
     }
   });
-  els.schoolOnboardingForm.addEventListener("submit", async event => {
+  els.staffInvitationForm.addEventListener("submit", async event => {
     event.preventDefault();
-    els.schoolSessionStatus.textContent = "Registrerer skole…";
+    els.staffInvitationStatus.textContent = "Opretter invitation…";
     try {
-      await globalThis.ElevsporSupabase.registerSchool(els.schoolName.value.trim());
-      els.schoolName.value = "";
-      await refreshSchoolSession();
+      const membership = await globalThis.ElevsporSupabase.getMembership();
+      const token = await globalThis.ElevsporSupabase.createSchoolInvitation(
+        membership.school_id,
+        els.staffInvitationEmail.value.trim(),
+        els.staffInvitationRole.value
+      );
+      const url = new URL(location.href);
+      url.search = "";
+      url.hash = "";
+      url.searchParams.set("invite", token);
+      els.staffInvitationLink.value = url.toString();
+      els.staffInvitationResult.hidden = false;
+      els.staffInvitationStatus.textContent = "Invitationen er klar og udløber efter 7 dage.";
     } catch (error) {
-      els.schoolSessionStatus.textContent = `Skolen kunne ikke registreres: ${error.message}`;
+      els.staffInvitationStatus.textContent = `Invitationen kunne ikke oprettes: ${error.message}`;
     }
+  });
+  els.copyStaffInvitation.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(els.staffInvitationLink.value);
+    els.staffInvitationStatus.textContent = "Linket er kopieret ✓";
   });
   els.schoolSignout.addEventListener("click", async () => {
     try {

@@ -6,7 +6,13 @@ on:
       - main
     paths:
       - "supabase/migrations/**"
+      - "supabase/config.toml"
   workflow_dispatch:
+    inputs:
+      owner_email:
+        description: "Optional owner email for a new Test-Skole bootstrap"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -26,6 +32,7 @@ jobs:
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+      ELEVSPOR_BOOTSTRAP_TOKEN: ${{ secrets.ELEVSPOR_BOOTSTRAP_TOKEN }}
 
     steps:
       - name: Check required configuration
@@ -51,6 +58,27 @@ jobs:
 
       - name: Apply pending migrations
         run: supabase db push --linked
+
+      - name: Enable invite-only authentication hook
+        run: supabase config push --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Create Test-Skole owner bootstrap
+        if: ${{ inputs.owner_email != '' }}
+        env:
+          OWNER_EMAIL: ${{ inputs.owner_email }}
+        shell: bash
+        run: |
+          [[ "$OWNER_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || {
+            echo "::error::Invalid owner email"
+            exit 1
+          }
+          [[ "$ELEVSPOR_BOOTSTRAP_TOKEN" =~ ^[a-f0-9]{48}$ ]] || {
+            echo "::error::Missing or invalid ELEVSPOR_BOOTSTRAP_TOKEN secret"
+            exit 1
+          }
+          echo "::add-mask::$ELEVSPOR_BOOTSTRAP_TOKEN"
+          supabase db query --linked \
+            "select public.create_school_bootstrap('Test-Skole', '$OWNER_EMAIL', 'Nicolai', '$ELEVSPOR_BOOTSTRAP_TOKEN');"
 
       - name: Show migration status
         run: supabase migration list --linked

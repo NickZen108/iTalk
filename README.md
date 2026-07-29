@@ -1,6 +1,6 @@
-# iTalk
+# ElevSpor
 
-iTalk er en selvstændig, dansk træningsapp, der hjælper autistiske elever med
+ElevSpor er en selvstændig, dansk træningsapp, der hjælper autistiske elever med
 at øve hverdagssamtaler i trygge og gradvist sværere rammer.
 
 ## MVP uden API
@@ -31,11 +31,10 @@ bygges i `android/app/build/outputs/apk/debug/`.
 
 ## Privatliv
 
-Den publicerede MVP har endnu ingen aktiv cloudforbindelse. Elevnavne,
-profilfotos, fremskridt og lærernoter gemmes lokalt. Tekst-til-tale bruger
-enhedens indbyggede oplæsningsfunktion.
+Elevnavne, profilfotos, fremskridt og lærernoter gemmes lokalt. Supabase
+modtager kun en anonym elevreference, godkendelsesstatus og aktivitetsdata.
+Tekst-til-tale bruger enhedens indbyggede oplæsningsfunktion.
 
-En Supabase-backend til en kommende skolepilot ligger som reproducerbare
-SQL-migrationer i `supabase/`. Den gemmer kun en anonym elevreference og
-aktivitet, isolerer skoler med Row Level Security og klargør månedlige
+Medarbejderkonti er invitationsbaserede. Backendens SQL-migrationer ligger i
+`supabase/`, isolerer skoler med Row Level Security og klargør månedlige
 opgørelser uden at sende mail. Se [docs/supabase-backend.md](docs/supabase-backend.md).

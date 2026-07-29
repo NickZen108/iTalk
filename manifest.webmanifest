@@ -5,13 +5,13 @@
   "lang": "da",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f7f8f5",
-  "theme_color": "#315c54",
+  "background_color": "#f7f5ff",
+  "theme_color": "#33206f",
   "icons": [
     {
-      "src": "icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "assets/elevspor-logo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

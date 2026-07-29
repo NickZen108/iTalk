@@ -1,15 +1,17 @@
 :root {
   color-scheme: light;
-  --bg: #f5f7f4;
+  --bg: #f7f5ff;
   --surface: #fff;
-  --ink: #18312c;
-  --muted: #65736f;
-  --brand: #315c54;
-  --brand-dark: #23473f;
-  --accent: #dcece6;
-  --gold: #f4b942;
-  --purple: #7659a6;
-  --line: #d7dfdb;
+  --ink: #211653;
+  --muted: #6f6883;
+  --brand: #6d55ea;
+  --brand-dark: #33206f;
+  --accent: #eeeaff;
+  --gold: #ffb020;
+  --purple: #8a0fd8;
+  --orange: #ff7a1a;
+  --mint: #24a47f;
+  --line: #e2ddf2;
   --danger: #8f3e3e;
   --shadow: 0 3px 14px rgba(22,48,42,.08);
   font-family: Inter, ui-rounded, "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -17,7 +19,7 @@
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font-size: 17px; line-height: 1.45; }
+body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top right,rgba(109,85,234,.13),transparent 35%),linear-gradient(160deg,#fbfaff,#f5f2ff 55%,#fff8f1); color: var(--ink); font-size: 17px; line-height: 1.45; }
 button, input, textarea, select { font: inherit; }
 button { touch-action: manipulation; cursor: pointer; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible {
@@ -33,10 +35,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .topbar {
   position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between;
   min-height: 76px; padding: max(.7rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) .7rem max(1rem, env(safe-area-inset-left));
-  background: rgba(245,247,244,.97); border-bottom: 1px solid var(--line); backdrop-filter: blur(12px);
+  background: rgba(255,255,255,.88); border-bottom: 1px solid rgba(109,85,234,.13); backdrop-filter: blur(18px);
 }
 .brand { display: flex; align-items: center; gap: .55rem; padding: 0; border: 0; background: transparent; color: var(--ink); font-weight: 850; font-size: 1.4rem; }
-.brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: var(--brand); color: #fff; letter-spacing: 2px; }
+.brand-mark { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 15px; background: linear-gradient(135deg,#33206f,#6d55ea 58%,#ff7a1a 140%); overflow: hidden; box-shadow: 0 10px 25px rgba(51,32,111,.22); }
+.brand-mark img { width: 46px; height: 46px; object-fit: contain; }
 select, input, textarea {
   border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); padding: .65rem .75rem;
 }
@@ -69,13 +72,13 @@ p { overflow-wrap: anywhere; }
 .primary-button, .secondary-button {
   min-height: 50px; padding: .7rem 1rem; border-radius: 13px; font-weight: 800;
 }
-.primary-button { border: 0; background: var(--brand); color: #fff; }
-.primary-button:hover { background: var(--brand-dark); }
+.primary-button { border: 0; background: linear-gradient(135deg,var(--brand-dark),var(--brand) 62%,var(--orange) 145%); color: #fff; box-shadow: 0 9px 22px rgba(109,85,234,.2); }
+.primary-button:hover { filter: brightness(.96); transform: translateY(-1px); }
 .secondary-button { border: 2px solid var(--line); background: var(--surface); color: var(--ink); }
 
 .hero-panel {
   margin-bottom: 1.5rem; padding: 1.25rem; border-radius: 24px;
-  background: linear-gradient(135deg,#284f48,#3d7268); color: #fff; box-shadow: var(--shadow);
+  background: linear-gradient(135deg,#33206f 0%,#6d55ea 58%,#ff7a1a 145%); color: #fff; box-shadow: 0 18px 38px rgba(51,32,111,.24);
 }
 .hero-score { display: flex; justify-content: space-between; align-items: center; }
 .hero-score strong { margin-left: .5rem; font-size: 2.7rem; line-height: 1; }
@@ -227,4 +230,15 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
 }
 .student-admin-card p { margin: .2rem 0 0; color: var(--muted); }
 .student-admin-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+.staff-invitation-panel { margin: 1.25rem 0; background: linear-gradient(145deg,#fff,#f1edff); }
+.staff-invitation-panel form { display: grid; grid-template-columns: minmax(180px,1fr) minmax(150px,.45fr) auto; gap: .7rem; align-items: end; }
+.staff-invitation-panel form label { display: none; }
+.invitation-result { display: grid; grid-template-columns: 1fr auto; gap: .7rem; align-items: end; }
+.invitation-result label, .invitation-result p { grid-column: 1/-1; }
+.invite-panel { grid-column: 1/-1; padding: .9rem; border: 1px solid #d8cffd; border-radius: 14px; background: #f4f1ff; }
+.invite-panel p { margin: .2rem 0 .7rem; }
 button:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 700px) {
+  .staff-invitation-panel form, .invitation-result { grid-template-columns: 1fr; }
+  .invitation-result label, .invitation-result p { grid-column: auto; }
+}

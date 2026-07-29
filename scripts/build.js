@@ -10,7 +10,8 @@ const files = [
   "app.js",
   "service-worker.js",
   "manifest.webmanifest",
-  "icons/icon.svg"
+  "icons/icon.svg",
+  "assets/elevspor-logo.png"
 ];
 
 fs.rmSync(dist, { recursive: true, force: true });

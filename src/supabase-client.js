@@ -41,6 +41,35 @@ async function signUp(email, password, displayName) {
   return data;
 }
 
+async function createSchoolInvitation(schoolId, email, role = "teacher") {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("create_school_invitation", {
+    target_school_id: schoolId,
+    invite_email: email,
+    invite_role: role
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function claimSchoolInvitation(token) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("claim_school_invitation", {
+    raw_token: token
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function claimSchoolBootstrap(token) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("claim_school_bootstrap", {
+    raw_token: token
+  });
+  if (error) throw error;
+  return data;
+}
+
 async function signIn(email, password) {
   const supabase = await requireClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -146,6 +175,9 @@ globalThis.ElevsporSupabase = {
   client,
   getSession,
   signUp,
+  createSchoolInvitation,
+  claimSchoolInvitation,
+  claimSchoolBootstrap,
   signIn,
   signOut,
   registerSchool,
