@@ -800,15 +800,19 @@
     renderStudentManagement(entry);
     if (typeof els.studentManagementDialog.showModal === "function") els.studentManagementDialog.showModal();
     else els.studentManagementDialog.setAttribute("open", "");
-    els.studentAuditList.innerHTML = '<p class="student-list-empty">Henter ændringer…</p>';
+    els.studentAuditList.replaceChildren();
+    emptyStudentGroup(els.studentAuditList, "Henter ændringer…");
     try {
       entry.auditEvents = await globalThis.ElevsporSupabase.listStudentAuditEvents(
         entry.approval.student.id
       );
       renderStudentAudit(entry.auditEvents);
     } catch (error) {
-      els.studentAuditList.innerHTML =
-        `<p class="student-list-empty">Auditsporet kunne ikke hentes: ${error.message}</p>`;
+      els.studentAuditList.replaceChildren();
+      emptyStudentGroup(
+        els.studentAuditList,
+        `Auditsporet kunne ikke hentes: ${error.message}`
+      );
     }
   }
 

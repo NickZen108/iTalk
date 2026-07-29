@@ -228,5 +228,6 @@ test("elevindstillinger viser et serverbaseret auditspor", () => {
   assert.match(app, /event\.actor_name/);
   assert.match(app, /event\.occurred_at/);
   assert.doesNotMatch(app, /innerHTML = `<strong>\$\{labels\[event\.action\]/);
+  assert.doesNotMatch(app, /Auditsporet kunne ikke hentes:[^;]+innerHTML/s);
   assert.match(client, /list_student_audit_events/);
 });
