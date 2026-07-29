@@ -261,6 +261,10 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
 .access-code { display: block; padding: .9rem; border-radius: 12px; background: var(--surface); color: var(--brand-deep); font: 800 1.25rem/1.2 ui-monospace, monospace; letter-spacing: .08em; text-align: center; }
 .student-identity-label { font-weight: 700; color: var(--brand-deep); }
 .student-device-list { display: grid; gap: .65rem; }
+.student-audit-list { display: grid; gap: .5rem; }
+.student-audit-item { padding: .7rem .8rem; border-left: 3px solid var(--brand); border-radius: 0 12px 12px 0; background: var(--surface); }
+.student-audit-item p { margin: .2rem 0 0; color: var(--muted); }
+.student-audit-section { margin-top: 1rem; }
 .student-device-item { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .8rem; border-radius: 14px; background: var(--surface); }
 .student-device-item p { margin: .15rem 0 0; color: var(--muted); }
 .student-lifecycle-actions, .danger-zone { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }

@@ -468,6 +468,7 @@
     studentManagementDialog: $("#student-management-dialog"),
     studentManagementTitle: $("#student-management-title"),
     studentDeviceList: $("#student-device-list"),
+    studentAuditList: $("#student-audit-list"),
     studentLifecycleDescription: $("#student-lifecycle-description"),
     toggleStudentActive: $("#toggle-student-active"),
     permanentDeletePanel: $("#permanent-delete-panel"),
@@ -721,6 +722,30 @@
     }).format(new Date(value));
   }
 
+  function renderStudentAudit(events = []) {
+    els.studentAuditList.replaceChildren();
+    const labels = {
+      device_removed: "Enhed fjernet",
+      student_deactivated: "Elev deaktiveret",
+      student_reactivated: "Elev genaktiveret",
+      student_deleted: "Elev slettet permanent"
+    };
+    if (!events.length) {
+      emptyStudentGroup(els.studentAuditList, "Ingen administrative ændringer endnu.");
+      return;
+    }
+    events.forEach(event => {
+      const item = document.createElement("article");
+      item.className = "student-audit-item";
+      const title = document.createElement("strong");
+      title.textContent = labels[event.action] || "Elev ændret";
+      const details = document.createElement("p");
+      details.textContent = `${event.actor_name} · ${formatDeviceDate(event.occurred_at)}`;
+      item.append(title, details);
+      els.studentAuditList.append(item);
+    });
+  }
+
   function renderStudentManagement(entry) {
     state.managedStudentEntry = entry;
     const progress = state.progress[entry.student.id] || {};
@@ -728,6 +753,7 @@
     const inactive = entry.approval.status === "inactive";
     els.studentManagementTitle.textContent = identity;
     els.studentDeviceList.replaceChildren();
+    renderStudentAudit(entry.auditEvents || []);
     const activeDevices = (entry.devices || []).filter(device => !device.revoked_at);
     if (!activeDevices.length) {
       emptyStudentGroup(els.studentDeviceList, "Ingen aktive enheder.");
@@ -745,6 +771,9 @@
         try {
           await globalThis.ElevsporSupabase.revokeStudentDevice(device.id);
           device.revoked_at = new Date().toISOString();
+          entry.auditEvents = await globalThis.ElevsporSupabase.listStudentAuditEvents(
+            entry.approval.student.id
+          );
           renderStudentManagement(entry);
           els.studentManagementStatus.textContent = "Enheden er fjernet og kan ikke længere åbne elevområdet. ✓";
         } catch (error) {
@@ -767,10 +796,20 @@
     els.studentManagementStatus.textContent = "";
   }
 
-  function openStudentManagement(entry) {
+  async function openStudentManagement(entry) {
     renderStudentManagement(entry);
     if (typeof els.studentManagementDialog.showModal === "function") els.studentManagementDialog.showModal();
     else els.studentManagementDialog.setAttribute("open", "");
+    els.studentAuditList.innerHTML = '<p class="student-list-empty">Henter ændringer…</p>';
+    try {
+      entry.auditEvents = await globalThis.ElevsporSupabase.listStudentAuditEvents(
+        entry.approval.student.id
+      );
+      renderStudentAudit(entry.auditEvents);
+    } catch (error) {
+      els.studentAuditList.innerHTML =
+        `<p class="student-list-empty">Auditsporet kunne ikke hentes: ${error.message}</p>`;
+    }
   }
 
   async function redeemStudentAccessFromHash() {
@@ -871,7 +910,7 @@
       devicesButton.className = "secondary-button";
       devicesButton.type = "button";
       devicesButton.textContent = `Enheder (${(entry.devices || []).filter(device => !device.revoked_at).length})`;
-      devicesButton.addEventListener("click", () => openStudentManagement(entry));
+      devicesButton.addEventListener("click", () => void openStudentManagement(entry));
       actions.append(devicesButton);
     }
     const pupilButton = document.createElement("button");

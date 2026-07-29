@@ -215,3 +215,18 @@ test("enheder, deaktivering og permanent sletning er separate handlinger", () =>
   assert.match(app, /setStudentActive/);
   assert.match(app, /deleteStudentPermanently/);
 });
+
+test("elevindstillinger viser et serverbaseret auditspor", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const client = fs.readFileSync(path.join(__dirname, "..", "src", "supabase-client.js"), "utf8");
+  assert.match(html, /id="student-audit-list"/);
+  assert.match(html, />Seneste ændringer</);
+  assert.match(app, /device_removed: "Enhed fjernet"/);
+  assert.match(app, /student_deactivated: "Elev deaktiveret"/);
+  assert.match(app, /student_reactivated: "Elev genaktiveret"/);
+  assert.match(app, /event\.actor_name/);
+  assert.match(app, /event\.occurred_at/);
+  assert.doesNotMatch(app, /innerHTML = `<strong>\$\{labels\[event\.action\]/);
+  assert.match(client, /list_student_audit_events/);
+});

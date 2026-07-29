@@ -200,6 +200,16 @@ async function deleteStudentPermanently(studentId) {
   if (error) throw error;
 }
 
+async function listStudentAuditEvents(studentId, limit = 20) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("list_student_audit_events", {
+    target_student_id: studentId,
+    result_limit: limit
+  });
+  if (error) throw error;
+  return data;
+}
+
 async function recordActivity(localId, activityType, durationSeconds, birthYear) {
   const supabase = await requireClient();
   const session = await getSession();
@@ -257,6 +267,7 @@ globalThis.ElevsporSupabase = {
   revokeStudentDevice,
   setStudentActive,
   deleteStudentPermanently,
+  listStudentAuditEvents,
   recordActivity,
   monthlyUsage,
   hashLocalReference

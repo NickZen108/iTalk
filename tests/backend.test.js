@@ -31,6 +31,10 @@ const studentLifecycleSql = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20260729170000_student_lifecycle.sql"),
   "utf8"
 );
+const studentAuditSql = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20260729172500_student_audit_log.sql"),
+  "utf8"
+);
 
 test("backend-migrationen har de nødvendige tenant-tabeller", () => {
   [
@@ -244,4 +248,19 @@ test("elevens livscyklus adskiller enhed, deaktivering og permanent sletning", (
   assert.match(studentLifecycleSql, /public\.is_school_admin\(target_school\)/);
   assert.match(studentLifecycleSql, /grant execute on function public\.set_student_active\(uuid, boolean\) to authenticated/);
   assert.doesNotMatch(studentLifecycleSql, /grant execute[\s\S]*delete_student_permanently\(uuid\) to anon/);
+});
+
+test("auditsporet oprettes server-side og gemmer ikke elevens navn", () => {
+  assert.match(studentAuditSql, /create table public\.student_audit_events/);
+  assert.match(studentAuditSql, /subject_student_id uuid not null/);
+  assert.match(studentAuditSql, /actor_id uuid references auth\.users\(id\) on delete set null/);
+  assert.match(studentAuditSql, /actor_name text not null/);
+  assert.match(studentAuditSql, /create or replace function public\.list_student_audit_events/);
+  assert.match(studentAuditSql, /'device_removed'/);
+  assert.match(studentAuditSql, /'student_deactivated'/);
+  assert.match(studentAuditSql, /'student_reactivated'/);
+  assert.match(studentAuditSql, /'student_deleted'/);
+  assert.match(studentAuditSql, /security definer/);
+  assert.doesNotMatch(studentAuditSql, /\b(?:student_name|email|birth_year)\b/i);
+  assert.doesNotMatch(studentAuditSql, /grant (?:select|insert|update|delete) on public\.student_audit_events to authenticated/i);
 });
