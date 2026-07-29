@@ -297,6 +297,24 @@ test("Test-Skole har et ikke-destruktivt testforløb med ærlige kontroller", ()
   assert.doesNotMatch(app, /refreshTestChecklist[\s\S]{0,2500}(?:createStudentAccess|approveStudent|setStudentActive|deleteStudentPermanently)\(/);
 });
 
+test("Opdatér status genhenter enheder før Test-Skoles enhedskontrol", () => {
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const start = app.indexOf("async function refreshTestChecklist()");
+  const end = app.indexOf("const AUDIT_ACTION_LABELS", start);
+  const refresh = app.slice(start, end);
+  const approvalFetch = refresh.indexOf("await globalThis.ElevsporSupabase.getStudentApproval(");
+  const deviceFetch = refresh.indexOf("await globalThis.ElevsporSupabase.listStudentDevices(freshStudent.id)");
+  const deviceCheck = refresh.indexOf("testEntry.devices.some(device => !device.revoked_at)");
+  const activityFetch = refresh.indexOf("await globalThis.ElevsporSupabase.listStudentActivities(");
+
+  assert.ok(approvalFetch >= 0, "statusknappen skal genhente elevens godkendelse");
+  assert.ok(deviceFetch > approvalFetch, "enheder skal genhentes efter den friske elevstatus");
+  assert.ok(deviceCheck > deviceFetch, "enhedskontrollen må ikke bruge den gamle cache");
+  assert.ok(activityFetch > deviceCheck, "aktiviteter skal også hentes på ny efter enhedskontrollen");
+  assert.match(refresh, /testEntry\.approval = \{ status: freshStatus, student: freshStudent \}/);
+  assert.match(refresh, /testEntry\.devices = \["approved", "inactive"\]\.includes\(freshStatus\)/);
+});
+
 test("adgang, enheder, deaktivering og permanent sletning er tydeligt adskilt", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");

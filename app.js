@@ -950,42 +950,73 @@
     const testEntry = context.entries.find(entry =>
       entry.student.name.trim().toLocaleLowerCase("da") === "test-elev"
     );
-    const approved = testEntry?.approval.status === "approved";
-    setTestCheck(
-      els.testCheckTeacher,
-      els.testCheckTeacherText,
-      approved ? "complete" : "pending",
-      !testEntry
-        ? "Test-Elev findes ikke på denne enhed. Opret profilen for at starte testen."
-        : approved
+    try {
+      if (!testEntry) {
+        setTestCheck(
+          els.testCheckTeacher,
+          els.testCheckTeacherText,
+          "pending",
+          "Test-Elev findes ikke på denne enhed. Opret profilen for at starte testen."
+        );
+        setTestCheck(
+          els.testCheckDevice,
+          els.testCheckDeviceText,
+          "pending",
+          "Ingen aktiv enhed fundet. Indløs en ny QR-kode, link eller kode på elevens enhed."
+        );
+        setTestCheck(
+          els.testCheckActivity,
+          els.testCheckActivityText,
+          "pending",
+          "Aktivitet kan først kontrolleres, når Test-Elev er godkendt."
+        );
+        els.testChecklistStatus.dataset.status = "";
+        els.testChecklistStatus.textContent = "Testforløbet er ikke færdigt endnu.";
+        return;
+      }
+      const progress = state.progress[testEntry.student.id] || {};
+      const freshStudent = await globalThis.ElevsporSupabase.getStudentApproval(
+        backendLocalStudentId(testEntry.student.id),
+        progress.birthYear || null
+      );
+      const freshStatus = freshStudent.approval_status === "approved" && !freshStudent.active
+        ? "inactive"
+        : freshStudent.approval_status;
+      testEntry.approval = { status: freshStatus, student: freshStudent };
+      testEntry.devices = ["approved", "inactive"].includes(freshStatus)
+        ? await globalThis.ElevsporSupabase.listStudentDevices(freshStudent.id)
+        : [];
+      const approved = freshStatus === "approved";
+      setTestCheck(
+        els.testCheckTeacher,
+        els.testCheckTeacherText,
+        approved ? "complete" : "pending",
+        approved
           ? "Test-Elev er godkendt på Test-Skole."
           : "Test-Elev mangler stadig lærerens godkendelse."
-    );
-    const activeDevice = approved && testEntry.devices.some(device => !device.revoked_at);
-    setTestCheck(
-      els.testCheckDevice,
-      els.testCheckDeviceText,
-      activeDevice ? "complete" : "pending",
-      activeDevice
-        ? "Serveren har fundet en aktiv enhed til Test-Elev."
-        : "Ingen aktiv enhed fundet. Indløs en ny QR-kode, link eller kode på elevens enhed."
-    );
-    if (!approved) {
-      setTestCheck(
-        els.testCheckActivity,
-        els.testCheckActivityText,
-        "pending",
-        "Aktivitet kan først kontrolleres, når Test-Elev er godkendt."
       );
-      els.testChecklistStatus.dataset.status = "";
-      els.testChecklistStatus.textContent = "Testforløbet er ikke færdigt endnu.";
-      els.refreshTestChecklist.disabled = false;
-      renderManualTestChecks();
-      return;
-    }
-    try {
+      const activeDevice = approved && testEntry.devices.some(device => !device.revoked_at);
+      setTestCheck(
+        els.testCheckDevice,
+        els.testCheckDeviceText,
+        activeDevice ? "complete" : "pending",
+        activeDevice
+          ? "Serveren har fundet en aktiv enhed til Test-Elev."
+          : "Ingen aktiv enhed fundet. Indløs en ny QR-kode, link eller kode på elevens enhed."
+      );
+      if (!approved) {
+        setTestCheck(
+          els.testCheckActivity,
+          els.testCheckActivityText,
+          "pending",
+          "Aktivitet kan først kontrolleres, når Test-Elev er godkendt."
+        );
+        els.testChecklistStatus.dataset.status = "";
+        els.testChecklistStatus.textContent = "Testforløbet er ikke færdigt endnu.";
+        return;
+      }
       const activities = await globalThis.ElevsporSupabase.listStudentActivities([
-        testEntry.approval.student.id
+        freshStudent.id
       ]);
       const completed = activities.some(item => item.activity_type === "conversation_completed");
       setTestCheck(
