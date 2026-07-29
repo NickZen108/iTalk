@@ -81,13 +81,19 @@ jobs:
               mailer_subjects_invite: "Du er inviteret til ElevSpor",
               mailer_templates_invite_content: $invite_template
             }' > /tmp/elevspor-auth-patch.json
-          curl --fail --silent --show-error \
+          auth_status="$(curl --silent --show-error \
             --request PATCH \
             "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
             --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             --header "Content-Type: application/json" \
             --data-binary @/tmp/elevspor-auth-patch.json \
-            --output /tmp/elevspor-auth-config.json
+            --output /tmp/elevspor-auth-config.json \
+            --write-out '%{http_code}')"
+          if [[ "$auth_status" != 2* ]]; then
+            echo "::error::Supabase auth configuration returned HTTP $auth_status"
+            jq -r '{message, error, details}' /tmp/elevspor-auth-config.json
+            exit 1
+          fi
           jq -e '
             .site_url == "https://nickzen108.github.io/iTalk/"
             and .mailer_autoconfirm == false
