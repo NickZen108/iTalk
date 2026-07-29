@@ -200,9 +200,13 @@ test("elevadgang kan åbnes med QR, link eller kode", () => {
   assert.match(app, /elevspor\.studentDevice/);
 });
 
-test("enheder, deaktivering og permanent sletning er separate handlinger", () => {
+test("adgang, enheder, deaktivering og permanent sletning er tydeligt adskilt", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.match(app, /devicesButton\.textContent = "Adgang og historik"/);
+  assert.doesNotMatch(app, /devicesButton\.textContent = `Enheder/);
+  assert.match(app, /studentDevicesTitle\.textContent = `Aktive enheder \(\$\{activeDevices\.length\}\)`/);
+  assert.match(html, /<p class="eyebrow">Adgang og historik<\/p>/);
   assert.match(app, /remove\.textContent = "Fjern enhed"/);
   assert.match(html, /id="toggle-student-active"/);
   assert.match(html, /id="delete-student-permanently"/);

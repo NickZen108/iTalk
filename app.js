@@ -467,6 +467,7 @@
   Object.assign(els, {
     studentManagementDialog: $("#student-management-dialog"),
     studentManagementTitle: $("#student-management-title"),
+    studentDevicesTitle: $("#student-devices-title"),
     studentDeviceList: $("#student-device-list"),
     studentAuditList: $("#student-audit-list"),
     studentLifecycleDescription: $("#student-lifecycle-description"),
@@ -755,8 +756,12 @@
     els.studentDeviceList.replaceChildren();
     renderStudentAudit(entry.auditEvents || []);
     const activeDevices = (entry.devices || []).filter(device => !device.revoked_at);
+    els.studentDevicesTitle.textContent = `Aktive enheder (${activeDevices.length})`;
     if (!activeDevices.length) {
-      emptyStudentGroup(els.studentDeviceList, "Ingen aktive enheder.");
+      emptyStudentGroup(
+        els.studentDeviceList,
+        "Ingen aktive enheder. Opret en ny elevadgang, når eleven skal tilknytte en enhed."
+      );
     }
     activeDevices.forEach((device, index) => {
       const item = document.createElement("article");
@@ -913,7 +918,11 @@
       const devicesButton = document.createElement("button");
       devicesButton.className = "secondary-button";
       devicesButton.type = "button";
-      devicesButton.textContent = `Enheder (${(entry.devices || []).filter(device => !device.revoked_at).length})`;
+      devicesButton.textContent = "Adgang og historik";
+      devicesButton.setAttribute(
+        "aria-label",
+        `Adgang og historik for ${studentIdentityLabel(student, state.progress[student.id]?.birthYear)}`
+      );
       devicesButton.addEventListener("click", () => void openStudentManagement(entry));
       actions.append(devicesButton);
     }
