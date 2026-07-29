@@ -10,8 +10,11 @@ const path = require("node:path");
 
 test("viser seneste udgivelsesdato og tidspunkt øverst", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
   assert.match(html, /Senest opdateret:/);
   assert.match(html, /<time datetime="[^"]+">[^<]+kl\.[^<]+<\/time>/);
+  assert.match(css, /\.update-stamp\s*\{[^}]*position:\s*sticky;[^}]*top:\s*0;/s);
+  assert.match(css, /\.topbar\s*\{[^}]*top:\s*1\.85rem;/s);
   const buildScript = fs.readFileSync(path.join(__dirname, "..", "scripts", "build.js"), "utf8");
   assert.match(buildScript, /Europe\/Copenhagen/);
   assert.match(buildScript, /stampedIndex/);
