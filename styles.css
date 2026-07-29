@@ -220,6 +220,19 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
 .teacher-approval .primary-button { margin-top: .5rem; }
 
 .create-student-form { margin: 1.25rem 0; }
+.school-nav { display: flex; gap: .55rem; margin: 1.25rem 0; overflow-x: auto; padding-bottom: .25rem; }
+.school-nav-button {
+  flex: 0 0 auto; min-height: 46px; padding: .6rem .9rem; border: 2px solid var(--line);
+  border-radius: 999px; background: var(--surface); color: var(--ink); font-weight: 800;
+}
+.school-nav-button.active { border-color: var(--brand); background: var(--accent); color: var(--brand-dark); }
+.school-page-heading { margin-bottom: 1rem; }
+.student-group { margin: 1rem 0 1.6rem; padding: 1rem; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.62); }
+.student-group-heading { display: flex; align-items: center; justify-content: space-between; gap: .7rem; margin-bottom: .75rem; }
+.student-group-heading h3 { margin: 0; font-size: 1.15rem; }
+.student-search { display: block; margin-bottom: .75rem; }
+.student-search input { width: 100%; }
+.student-list-empty { margin: 0; padding: .9rem; border-radius: 13px; background: var(--accent); color: var(--muted); }
 .student-admin-list { display: grid; gap: .75rem; }
 .student-admin-card {
   display: grid;
@@ -234,6 +247,8 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
 }
 .student-admin-card p { margin: .2rem 0 0; color: var(--muted); }
 .student-admin-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+.new-student-highlight { border-color: var(--brand); box-shadow: 0 0 0 4px rgba(109,85,234,.12), var(--shadow); animation: highlight-student 1.2s ease-out; }
+@keyframes highlight-student { from { transform: scale(.985); background: #eeeaff; } }
 .staff-invitation-panel { margin: 1.25rem 0; background: linear-gradient(145deg,#fff,#f1edff); }
 .staff-invitation-panel form { display: grid; grid-template-columns: minmax(180px,1fr) minmax(150px,.45fr) auto; gap: .7rem; align-items: end; }
 .staff-invitation-panel form label { display: none; }
@@ -245,4 +260,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 @media (max-width: 700px) {
   .staff-invitation-panel form, .invitation-result { grid-template-columns: 1fr; }
   .invitation-result label, .invitation-result p { grid-column: auto; }
+  .student-admin-card { grid-template-columns: 1fr; }
+  .student-admin-actions { justify-content: flex-start; }
+  .student-admin-actions button { flex: 1 1 150px; }
 }

@@ -128,5 +128,20 @@ test("forsiden har ingen åben elevvælger og elever oprettes i lærerområdet",
   assert.match(html, /id="create-student-button"/);
   assert.match(app, /renderSchoolDashboard/);
   assert.match(app, /Opretter eleven sikkert/);
-  assert.match(app, /er oprettet og klar til godkendelse/);
+  assert.match(app, /er oprettet\. Godkend eleven under/);
+});
+
+test("elevadministration er opdelt i egne sider og prioriterer godkendelser", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.match(html, /data-school-page="students"/);
+  assert.match(html, /data-school-page="create-student"/);
+  assert.match(html, /data-school-page="staff"/);
+  assert.match(html, /id="pending-student-list"/);
+  assert.match(html, /id="recent-student-list"/);
+  assert.match(html, /id="all-student-list"/);
+  assert.match(html, /id="student-search"/);
+  assert.match(app, /pending\.forEach[\s\S]*approved\.slice\(0, 5\)[\s\S]*entries\.sort/);
+  assert.match(app, /renderSchoolDashboard\("students", id\)/);
+  assert.match(app, /new-student-highlight/);
 });

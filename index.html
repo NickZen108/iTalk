@@ -55,12 +55,65 @@
       <div class="page-heading">
         <div>
           <p class="eyebrow">Lærerområde</p>
-          <h1>Elever på denne enhed</h1>
+          <h1>Skolens administration</h1>
           <p id="teacher-profile-name"></p>
         </div>
         <button id="dashboard-signout" class="secondary-button" type="button">Log ud</button>
       </div>
       <div class="privacy-note"><span aria-hidden="true">🔒</span> Elevnavne bliver på denne enhed. Supabase modtager kun et anonymt elev-id.</div>
+      <nav class="school-nav" aria-label="Lærerområdets sider">
+        <button class="school-nav-button" type="button" data-school-page="students">Elever</button>
+        <button class="school-nav-button" type="button" data-school-page="create-student">Opret elev</button>
+        <button id="staff-page-button" class="school-nav-button" type="button" data-school-page="staff" hidden>Medarbejdere</button>
+      </nav>
+
+      <section id="students-page" class="school-page">
+        <div class="section-heading school-page-heading">
+          <div>
+            <p class="eyebrow">Elevadministration</p>
+            <h2>Elever</h2>
+          </div>
+        </div>
+        <p id="students-page-status" class="save-status" aria-live="polite"></p>
+        <section class="student-group" aria-labelledby="pending-students-title">
+          <div class="student-group-heading">
+            <h3 id="pending-students-title">Mangler godkendelse</h3>
+            <span id="pending-student-count" class="completed-pill"></span>
+          </div>
+          <div id="pending-student-list" class="student-admin-list"></div>
+        </section>
+        <section class="student-group" aria-labelledby="recent-students-title">
+          <div class="student-group-heading">
+            <h3 id="recent-students-title">Nyligt godkendte</h3>
+          </div>
+          <div id="recent-student-list" class="student-admin-list"></div>
+        </section>
+        <section class="student-group" aria-labelledby="all-students-title">
+          <div class="student-group-heading">
+            <h3 id="all-students-title">Alle elever</h3>
+          </div>
+          <label class="student-search" for="student-search">
+            <span class="sr-only">Søg efter elev</span>
+            <input id="student-search" type="search" placeholder="Søg efter elev…" autocomplete="off">
+          </label>
+          <div id="all-student-list" class="student-admin-list"></div>
+        </section>
+      </section>
+
+      <section id="create-student-page" class="school-page" hidden>
+        <form id="create-student-form" class="teacher-form create-student-form">
+          <p class="eyebrow">Ny elev</p>
+          <h2>Opret elev</h2>
+          <label for="new-student-name">Elevens navn</label>
+          <input id="new-student-name" maxlength="80" autocomplete="off" required>
+          <label for="new-student-birth-year">Fødselsår</label>
+          <input id="new-student-birth-year" type="number" min="1926" max="2026" inputmode="numeric" required>
+          <button id="create-student-button" class="primary-button" type="submit">Opret elev til godkendelse</button>
+          <p id="create-student-status" class="save-status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section id="staff-page" class="school-page" hidden>
       <section id="staff-invitation-panel" class="teacher-form staff-invitation-panel" hidden>
         <div>
           <p class="eyebrow">Medarbejdere</p>
@@ -83,16 +136,7 @@
           <p id="staff-invitation-status" class="save-status" aria-live="polite"></p>
         </div>
       </section>
-      <form id="create-student-form" class="teacher-form create-student-form">
-        <h2>Opret elev</h2>
-        <label for="new-student-name">Elevens navn</label>
-        <input id="new-student-name" maxlength="80" autocomplete="off" required>
-        <label for="new-student-birth-year">Fødselsår</label>
-        <input id="new-student-birth-year" type="number" min="1926" max="2026" inputmode="numeric" required>
-        <button id="create-student-button" class="primary-button" type="submit">Opret elev til godkendelse</button>
-        <p id="create-student-status" class="save-status" aria-live="polite"></p>
-      </form>
-      <div id="teacher-student-list" class="student-admin-list"></div>
+      </section>
     </section>
 
     <section id="role-view" class="view" hidden>

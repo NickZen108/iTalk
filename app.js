@@ -397,7 +397,15 @@
     newStudentBirthYear: $("#new-student-birth-year"),
     createStudentButton: $("#create-student-button"),
     createStudentStatus: $("#create-student-status"),
-    teacherStudentList: $("#teacher-student-list"),
+    schoolPages: Array.from(document.querySelectorAll(".school-page")),
+    schoolNavButtons: Array.from(document.querySelectorAll(".school-nav-button")),
+    staffPageButton: $("#staff-page-button"),
+    pendingStudentList: $("#pending-student-list"),
+    recentStudentList: $("#recent-student-list"),
+    allStudentList: $("#all-student-list"),
+    pendingStudentCount: $("#pending-student-count"),
+    studentSearch: $("#student-search"),
+    studentsPageStatus: $("#students-page-status"),
     studentApprovalPanel: $("#student-approval-panel"),
     teacherApprovalStatus: $("#teacher-approval-status"),
     approveStudent: $("#approve-student"),
@@ -537,7 +545,82 @@
     store.write("elevspor.localStudents", STUDENTS);
   }
 
-  async function renderSchoolDashboard() {
+  function showSchoolPage(name) {
+    els.schoolPages.forEach(page => { page.hidden = page.id !== `${name}-page`; });
+    els.schoolNavButtons.forEach(button => {
+      const active = button.dataset.schoolPage === name;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-current", active ? "page" : "false");
+    });
+  }
+
+  function emptyStudentGroup(container, message) {
+    const empty = document.createElement("p");
+    empty.className = "student-list-empty";
+    empty.textContent = message;
+    container.append(empty);
+  }
+
+  function renderStudentAdminCard(entry, options = {}) {
+    const { student, approval } = entry;
+    const card = document.createElement("article");
+    card.className = "student-admin-card";
+    if (options.highlight) {
+      card.classList.add("new-student-highlight");
+      card.id = "newly-created-student";
+    }
+    const status = approval.status === "approved"
+      ? "Godkendt"
+      : approval.status === "pending"
+        ? "Afventer lærerens godkendelse"
+        : approval.message;
+    card.innerHTML = `
+      <div><strong>${student.avatar} ${student.name}</strong>
+      <p>${status}</p></div>
+      <div class="student-admin-actions"></div>`;
+    const actions = card.querySelector(".student-admin-actions");
+    if (approval.status === "pending") {
+      const approve = document.createElement("button");
+      approve.className = "primary-button";
+      approve.type = "button";
+      approve.textContent = "Godkend";
+      approve.addEventListener("click", async () => {
+        approve.disabled = true;
+        approve.textContent = "Godkender…";
+        try {
+          await globalThis.ElevsporSupabase.approveStudent(approval.student.id);
+          state.justApprovedStudentId = student.id;
+          await renderSchoolDashboard("students");
+        } catch (error) {
+          card.querySelector("p").textContent = `Godkendelse mislykkedes: ${error.message}`;
+          approve.disabled = false;
+          approve.textContent = "Godkend";
+        }
+      });
+      actions.append(approve);
+    }
+    const pupilButton = document.createElement("button");
+    pupilButton.className = "secondary-button";
+    pupilButton.type = "button";
+    pupilButton.textContent = "Åbn elevområde";
+    pupilButton.disabled = approval.status !== "approved";
+    pupilButton.addEventListener("click", () => {
+      selectStudent(student.id);
+      void renderStudent();
+    });
+    const teacherButton = document.createElement("button");
+    teacherButton.className = "secondary-button";
+    teacherButton.type = "button";
+    teacherButton.textContent = "Status og indstillinger";
+    teacherButton.addEventListener("click", () => {
+      selectStudent(student.id);
+      void renderTeacher();
+    });
+    actions.append(pupilButton, teacherButton);
+    return card;
+  }
+
+  async function renderSchoolDashboard(page = "students", highlightStudentId = "") {
     const backend = globalThis.ElevsporSupabase;
     const session = await backend?.getSession();
     if (!session) {
@@ -553,65 +636,43 @@
       || session.user.email?.split("@")[0]
       || "Lærer";
     els.teacherProfileName.textContent = `${displayName} · ${membership.schools?.name || "skolen"}`;
-    els.staffInvitationPanel.hidden = !["owner", "admin"].includes(membership.role);
-    els.teacherStudentList.replaceChildren();
-    if (!STUDENTS.length) {
-      const empty = document.createElement("p");
-      empty.className = "approval-panel";
-      empty.textContent = "Der er endnu ingen elever på denne enhed.";
-      els.teacherStudentList.append(empty);
-    }
+    const canManageStaff = ["owner", "admin"].includes(membership.role);
+    els.staffInvitationPanel.hidden = !canManageStaff;
+    els.staffPageButton.hidden = !canManageStaff;
+    if (!canManageStaff && page === "staff") page = "students";
+    const entries = [];
     for (const student of STUDENTS) {
       state.studentId = student.id;
       currentProgress();
       const approval = await loadStudentApproval();
-      const card = document.createElement("article");
-      card.className = "student-admin-card";
-      card.innerHTML = `
-        <div><strong>${student.avatar} ${student.name}</strong>
-        <p>${approval.status === "approved" ? "Godkendt" : approval.status === "pending" ? "Afventer lærerens godkendelse" : approval.message}</p></div>
-        <div class="student-admin-actions"></div>`;
-      const actions = card.querySelector(".student-admin-actions");
-      if (approval.status === "pending") {
-        const approve = document.createElement("button");
-        approve.className = "primary-button";
-        approve.type = "button";
-        approve.textContent = "Godkend";
-        approve.addEventListener("click", async () => {
-          approve.disabled = true;
-          try {
-            await backend.approveStudent(approval.student.id);
-            await renderSchoolDashboard();
-          } catch (error) {
-            card.querySelector("p").textContent = `Godkendelse mislykkedes: ${error.message}`;
-            approve.disabled = false;
-          }
-        });
-        actions.append(approve);
-      }
-      const pupilButton = document.createElement("button");
-      pupilButton.className = "secondary-button";
-      pupilButton.type = "button";
-      pupilButton.textContent = "Åbn elevområde";
-      pupilButton.disabled = approval.status !== "approved";
-      pupilButton.addEventListener("click", () => {
-        selectStudent(student.id);
-        void renderStudent();
-      });
-      const teacherButton = document.createElement("button");
-      teacherButton.className = "secondary-button";
-      teacherButton.type = "button";
-      teacherButton.textContent = "Status og indstillinger";
-      teacherButton.addEventListener("click", () => {
-        selectStudent(student.id);
-        void renderTeacher();
-      });
-      actions.append(pupilButton, teacherButton);
-      els.teacherStudentList.append(card);
+      entries.push({ student, approval });
     }
     state.studentId = "";
     store.write("italk.selectedStudent", "");
+    const pending = entries.filter(entry => entry.approval.status === "pending");
+    const approved = entries.filter(entry => entry.approval.status === "approved")
+      .sort((a, b) => new Date(b.approval.student?.approved_at || 0) - new Date(a.approval.student?.approved_at || 0));
+    els.pendingStudentList.replaceChildren();
+    els.recentStudentList.replaceChildren();
+    els.allStudentList.replaceChildren();
+    els.pendingStudentCount.textContent = `${pending.length} venter`;
+    pending.forEach(entry => els.pendingStudentList.append(renderStudentAdminCard(entry, {
+      highlight: entry.student.id === highlightStudentId
+    })));
+    approved.slice(0, 5).forEach(entry => els.recentStudentList.append(renderStudentAdminCard(entry, {
+      highlight: entry.student.id === state.justApprovedStudentId
+    })));
+    entries.sort((a, b) => a.student.name.localeCompare(b.student.name, "da"))
+      .forEach(entry => els.allStudentList.append(renderStudentAdminCard(entry)));
+    if (!pending.length) emptyStudentGroup(els.pendingStudentList, "Ingen elever venter på godkendelse.");
+    if (!approved.length) emptyStudentGroup(els.recentStudentList, "Ingen elever er godkendt endnu.");
+    if (!entries.length) emptyStudentGroup(els.allStudentList, "Der er endnu ingen elever på denne enhed.");
+    els.studentSearch.value = "";
+    showSchoolPage(page);
     showView("school-dashboard");
+    const highlighted = document.querySelector(".new-student-highlight");
+    if (highlighted) highlighted.scrollIntoView({ block: "center", behavior: "smooth" });
+    state.justApprovedStudentId = "";
   }
 
   async function renderStudent() {
@@ -961,10 +1022,9 @@
       progress.birthYear = birthYear;
       saveProgress();
       els.createStudentForm.reset();
-      await renderSchoolDashboard();
-      els.createStudentStatus.dataset.status = "success";
-      els.createStudentStatus.textContent = `${name} er oprettet og klar til godkendelse ✓`;
-      els.createStudentStatus.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      await renderSchoolDashboard("students", id);
+      els.studentsPageStatus.dataset.status = "success";
+      els.studentsPageStatus.textContent = `${name} er oprettet. Godkend eleven under “Mangler godkendelse”. ✓`;
     } catch (error) {
       els.createStudentStatus.dataset.status = "error";
       els.createStudentStatus.textContent = `Eleven blev ikke oprettet: ${error.message}`;
@@ -988,6 +1048,15 @@
       els.teacherApprovalStatus.textContent = `Godkendelsen mislykkedes: ${error.message}`;
       els.approveStudent.disabled = false;
     }
+  });
+  els.schoolNavButtons.forEach(button => {
+    button.addEventListener("click", () => showSchoolPage(button.dataset.schoolPage));
+  });
+  els.studentSearch.addEventListener("input", () => {
+    const query = els.studentSearch.value.trim().toLocaleLowerCase("da");
+    Array.from(els.allStudentList.querySelectorAll(".student-admin-card")).forEach(card => {
+      card.hidden = Boolean(query) && !card.textContent.toLocaleLowerCase("da").includes(query);
+    });
   });
   function sendStudentMessage() {
     const text = els.chatInput.value.trim();
