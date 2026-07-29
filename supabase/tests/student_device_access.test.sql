@@ -70,12 +70,16 @@ select lives_ok(
   )$$,
   'student device can record approved activity'
 );
+reset role;
 select is(
   (select count(*)::integer from public.student_activities
    where student_id = 'f1000000-0000-0000-0000-000000000001' and device_id is not null),
   1,
   'device activity is attributed to the exact pupil device'
 );
+set local role anon;
+select set_config('request.jwt.claim.sub', '', true);
+select set_config('request.jwt.claim.role', 'anon', true);
 select throws_ok(
   $$select public.student_device_status('wrong-token')$$,
   'P0001', 'Elevadgangen er ikke længere gyldig',
@@ -102,6 +106,7 @@ select throws_ok(
   'P0001', 'Elevadgangen er ikke længere gyldig',
   'revoked device stops working immediately'
 );
+reset role;
 select is(
   (select count(*)::integer from public.student_access_grants where redeemed_at is not null),
   1,
