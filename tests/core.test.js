@@ -97,6 +97,12 @@ test("talegenkendelse sender automatisk et færdigt svar", () => {
   assert.match(source, /sendStudentMessage\(\)/);
 });
 
+test("offentlig forside tåler stemmeopdatering uden valgt elev", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.match(source, /function populateVoices\(\) \{\s+const progress = currentProgress\(\);\s+if \(!progress\) return;/);
+  assert.match(source, /addEventListener\("voiceschanged", populateVoices\)/);
+});
+
 test("en samtale kræver både fuld tid og løbende elevsvar", () => {
   assert.equal(isConversationPassed({ remaining: 1, duration: 60, turns: 9 }), false);
   assert.equal(isConversationPassed({ remaining: 0, duration: 60, turns: 1 }), false);

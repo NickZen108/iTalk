@@ -1443,6 +1443,7 @@
 
   function populateVoices() {
     const progress = currentProgress();
+    if (!progress) return;
     const voices = availableVoices();
     els.voiceSelect.replaceChildren();
     const fallback = document.createElement("option");
