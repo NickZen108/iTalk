@@ -63,11 +63,7 @@ jobs:
       - name: Enable invite-only authentication hook
         shell: bash
         run: |
-          confirmation_template="$(jq -Rs . < supabase/templates/confirmation.html)"
-          invite_template="$(jq -Rs . < supabase/templates/invite.html)"
           jq -n \
-            --argjson confirmation_template "$confirmation_template" \
-            --argjson invite_template "$invite_template" \
             '{
               site_url: "https://nickzen108.github.io/iTalk/",
               mailer_autoconfirm: false,
@@ -75,11 +71,7 @@ jobs:
               mfa_totp_enroll_enabled: true,
               mfa_totp_verify_enabled: true,
               hook_before_user_created_enabled: true,
-              hook_before_user_created_uri: "pg-functions://postgres/public/hook_allow_invited_staff",
-              mailer_subjects_confirmation: "Bekræft din ElevSpor-konto",
-              mailer_templates_confirmation_content: $confirmation_template,
-              mailer_subjects_invite: "Du er inviteret til ElevSpor",
-              mailer_templates_invite_content: $invite_template
+              hook_before_user_created_uri: "pg-functions://postgres/public/hook_allow_invited_staff"
             }' > /tmp/elevspor-auth-patch.json
           auth_status="$(curl --silent --show-error \
             --request PATCH \
@@ -102,12 +94,47 @@ jobs:
             and .mfa_totp_verify_enabled == true
             and .hook_before_user_created_enabled == true
             and .hook_before_user_created_uri == "pg-functions://postgres/public/hook_allow_invited_staff"
-            and .mailer_subjects_confirmation == "Bekræft din ElevSpor-konto"
-            and .mailer_subjects_invite == "Du er inviteret til ElevSpor"
-            and (.mailer_templates_confirmation_content | contains("{{ .ConfirmationURL }}"))
-            and (.mailer_templates_invite_content | contains("{{ .ConfirmationURL }}"))
           ' /tmp/elevspor-auth-config.json >/dev/null
-          echo "Invite-only auth hook, branded mail templates, and existing email/MFA safeguards are active."
+          echo "Invite-only auth hook and existing email/MFA safeguards are active."
+
+      - name: Apply branded authentication emails when SMTP permits it
+        shell: bash
+        run: |
+          confirmation_template="$(jq -Rs . < supabase/templates/confirmation.html)"
+          invite_template="$(jq -Rs . < supabase/templates/invite.html)"
+          jq -n \
+            --argjson confirmation_template "$confirmation_template" \
+            --argjson invite_template "$invite_template" \
+            '{
+              mailer_subjects_confirmation: "Bekræft din ElevSpor-konto",
+              mailer_templates_confirmation_content: $confirmation_template,
+              mailer_subjects_invite: "Du er inviteret til ElevSpor",
+              mailer_templates_invite_content: $invite_template
+            }' > /tmp/elevspor-mail-patch.json
+          mail_status="$(curl --silent --show-error \
+            --request PATCH \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
+            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data-binary @/tmp/elevspor-mail-patch.json \
+            --output /tmp/elevspor-mail-config.json \
+            --write-out '%{http_code}')"
+          if [[ "$mail_status" == 2* ]]; then
+            jq -e '
+              .mailer_subjects_confirmation == "Bekræft din ElevSpor-konto"
+              and .mailer_subjects_invite == "Du er inviteret til ElevSpor"
+              and (.mailer_templates_confirmation_content | contains("{{ .ConfirmationURL }}"))
+              and (.mailer_templates_invite_content | contains("{{ .ConfirmationURL }}"))
+            ' /tmp/elevspor-mail-config.json >/dev/null
+            echo "Branded ElevSpor authentication emails are active."
+          elif jq -e '.message | contains("not available for free tier projects using the default email provider")' \
+            /tmp/elevspor-mail-config.json >/dev/null; then
+            echo "::warning::ElevSpor mail templates are ready but require custom SMTP or a paid Supabase plan."
+          else
+            echo "::error::Supabase mail template configuration returned HTTP $mail_status"
+            jq -r '{message, error, details}' /tmp/elevspor-mail-config.json
+            exit 1
+          fi
 
       - name: Create Test-Skole owner bootstrap
         if: ${{ inputs.owner_email != '' }}
