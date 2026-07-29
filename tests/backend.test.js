@@ -142,6 +142,9 @@ test("hostede migrationer bruger kun GitHub-secrets med nødvendige rettigheder"
   assert.match(workflow, /secrets\.SUPABASE_DB_PASSWORD/);
   assert.match(workflow, /vars\.SUPABASE_PROJECT_REF/);
   assert.match(workflow, /supabase db push --linked/);
+  assert.match(workflow, /api\.supabase\.com\/v1\/projects\/\$SUPABASE_PROJECT_REF\/config\/auth/);
+  assert.match(workflow, /hook_before_user_created_enabled/);
+  assert.doesNotMatch(workflow, /supabase config push/);
   assert.match(workflow, /supabase test db --linked/);
   assert.match(workflow, /SUPABASE_PUBLISHABLE_KEY/);
   assert.match(workflow, /Expected anonymous schools request to be denied with HTTP 401/);

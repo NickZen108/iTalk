@@ -60,7 +60,33 @@ jobs:
         run: supabase db push --linked
 
       - name: Enable invite-only authentication hook
-        run: supabase config push --project-ref "$SUPABASE_PROJECT_REF"
+        shell: bash
+        run: |
+          curl --fail --silent --show-error \
+            --request PATCH \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
+            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{
+              "site_url": "https://nickzen108.github.io/iTalk/",
+              "mailer_autoconfirm": false,
+              "mailer_otp_length": 8,
+              "mfa_totp_enroll_enabled": true,
+              "mfa_totp_verify_enabled": true,
+              "hook_before_user_created_enabled": true,
+              "hook_before_user_created_uri": "pg-functions://postgres/public/hook_allow_invited_staff"
+            }' \
+            --output /tmp/elevspor-auth-config.json
+          jq -e '
+            .site_url == "https://nickzen108.github.io/iTalk/"
+            and .mailer_autoconfirm == false
+            and .mailer_otp_length == 8
+            and .mfa_totp_enroll_enabled == true
+            and .mfa_totp_verify_enabled == true
+            and .hook_before_user_created_enabled == true
+            and .hook_before_user_created_uri == "pg-functions://postgres/public/hook_allow_invited_staff"
+          ' /tmp/elevspor-auth-config.json >/dev/null
+          echo "Invite-only auth hook and existing email/MFA safeguards are active."
 
       - name: Create Test-Skole owner bootstrap
         if: ${{ inputs.owner_email != '' }}
