@@ -165,6 +165,41 @@ async function recordStudentDeviceActivity(deviceToken, activityType, durationSe
   return data;
 }
 
+async function listStudentDevices(studentId) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("list_student_devices", {
+    target_student_id: studentId
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function revokeStudentDevice(deviceId) {
+  const supabase = await requireClient();
+  const { error } = await supabase.rpc("revoke_student_device", {
+    target_device_id: deviceId
+  });
+  if (error) throw error;
+}
+
+async function setStudentActive(studentId, active) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("set_student_active", {
+    target_student_id: studentId,
+    requested_active: active
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function deleteStudentPermanently(studentId) {
+  const supabase = await requireClient();
+  const { error } = await supabase.rpc("delete_student_permanently", {
+    target_student_id: studentId
+  });
+  if (error) throw error;
+}
+
 async function recordActivity(localId, activityType, durationSeconds, birthYear) {
   const supabase = await requireClient();
   const session = await getSession();
@@ -218,6 +253,10 @@ globalThis.ElevsporSupabase = {
   redeemStudentAccess,
   getStudentDeviceStatus,
   recordStudentDeviceActivity,
+  listStudentDevices,
+  revokeStudentDevice,
+  setStudentActive,
+  deleteStudentPermanently,
   recordActivity,
   monthlyUsage,
   hashLocalReference

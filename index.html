@@ -351,6 +351,30 @@
         </div>
       </div>
     </dialog>
+
+    <dialog id="student-management-dialog" class="topic-dialog student-management-dialog">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">Elevindstillinger</p><h2 id="student-management-title"></h2></div>
+        <button id="close-student-management" class="secondary-button" type="button">Luk</button>
+      </div>
+      <section aria-labelledby="student-devices-title">
+        <h3 id="student-devices-title">Godkendte enheder</h3>
+        <div id="student-device-list" class="student-device-list"></div>
+      </section>
+      <section class="student-lifecycle-actions" aria-labelledby="student-lifecycle-title">
+        <h3 id="student-lifecycle-title">Elevstatus</h3>
+        <p id="student-lifecycle-description"></p>
+        <button id="toggle-student-active" class="secondary-button" type="button"></button>
+      </section>
+      <section id="permanent-delete-panel" class="danger-zone" hidden>
+        <h3>Permanent sletning</h3>
+        <p>Sletter elevens anonyme backenddata, aktiviteter og enheder. Handlingen kan ikke fortrydes.</p>
+        <label for="confirm-student-deletion">Skriv elevens viste navn for at bekræfte</label>
+        <input id="confirm-student-deletion" autocomplete="off">
+        <button id="delete-student-permanently" class="danger-button" type="button" disabled>Slet elev permanent</button>
+      </section>
+      <p id="student-management-status" class="save-status" aria-live="polite"></p>
+    </dialog>
   </main>
 
   <script src="runtime-config.js"></script>

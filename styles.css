@@ -260,6 +260,13 @@ textarea { width: 100%; resize: vertical; min-height: 80px; }
 .student-access-details { display: grid; gap: .65rem; }
 .access-code { display: block; padding: .9rem; border-radius: 12px; background: var(--surface); color: var(--brand-deep); font: 800 1.25rem/1.2 ui-monospace, monospace; letter-spacing: .08em; text-align: center; }
 .student-identity-label { font-weight: 700; color: var(--brand-deep); }
+.student-device-list { display: grid; gap: .65rem; }
+.student-device-item { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .8rem; border-radius: 14px; background: var(--surface); }
+.student-device-item p { margin: .15rem 0 0; color: var(--muted); }
+.student-lifecycle-actions, .danger-zone { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.danger-zone { display: grid; gap: .65rem; }
+.danger-button { border: 0; border-radius: 12px; padding: .8rem 1rem; color: #fff; background: #a8233a; font: inherit; font-weight: 800; cursor: pointer; }
+.danger-button:disabled { opacity: .45; cursor: not-allowed; }
 .invite-panel { grid-column: 1/-1; padding: .9rem; border: 1px solid #d8cffd; border-radius: 14px; background: #f4f1ff; }
 .invite-panel p { margin: .2rem 0 .7rem; }
 button:disabled { opacity: .55; cursor: not-allowed; }

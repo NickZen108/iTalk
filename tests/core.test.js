@@ -199,3 +199,19 @@ test("elevadgang kan åbnes med QR, link eller kode", () => {
   assert.match(app, /recordStudentDeviceActivity/);
   assert.match(app, /elevspor\.studentDevice/);
 });
+
+test("enheder, deaktivering og permanent sletning er separate handlinger", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.match(app, /remove\.textContent = "Fjern enhed"/);
+  assert.match(html, /id="toggle-student-active"/);
+  assert.match(html, /id="delete-student-permanently"/);
+  assert.match(html, /Slet elev permanent/);
+  assert.match(app, /Deaktivér elev/);
+  assert.match(app, /Genaktivér elev/);
+  assert.match(app, /state\.canManageStaff/);
+  assert.match(app, /confirmStudentDeletion\.value\.trim\(\)/);
+  assert.match(app, /revokeStudentDevice/);
+  assert.match(app, /setStudentActive/);
+  assert.match(app, /deleteStudentPermanently/);
+});

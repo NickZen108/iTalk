@@ -1,4 +1,4 @@
-const CACHE = "elevspor-v16";
+const CACHE = "elevspor-v17";
 const ASSETS = [
   "./",
   "./index.html",

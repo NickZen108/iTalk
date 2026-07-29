@@ -27,6 +27,10 @@ const studentDeviceSql = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20260729162500_student_device_access.sql"),
   "utf8"
 );
+const studentLifecycleSql = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20260729170000_student_lifecycle.sql"),
+  "utf8"
+);
 
 test("backend-migrationen har de nødvendige tenant-tabeller", () => {
   [
@@ -230,4 +234,14 @@ test("elevadgang bruger engangskoder og tilbagekaldelige pseudonyme enheder", ()
   assert.match(studentDeviceSql, /revoked_at is null/);
   assert.match(studentDeviceSql, /access_grant\.student_id/);
   assert.doesNotMatch(studentDeviceSql, /\b(?:student_name|email|birth_year)\b/i);
+});
+
+test("elevens livscyklus adskiller enhed, deaktivering og permanent sletning", () => {
+  assert.match(studentLifecycleSql, /create or replace function public\.list_student_devices/);
+  assert.match(studentLifecycleSql, /create or replace function public\.set_student_active/);
+  assert.match(studentLifecycleSql, /set revoked_at = coalesce\(revoked_at, now\(\)\)/);
+  assert.match(studentLifecycleSql, /create or replace function public\.delete_student_permanently/);
+  assert.match(studentLifecycleSql, /public\.is_school_admin\(target_school\)/);
+  assert.match(studentLifecycleSql, /grant execute on function public\.set_student_active\(uuid, boolean\) to authenticated/);
+  assert.doesNotMatch(studentLifecycleSql, /grant execute[\s\S]*delete_student_permanently\(uuid\) to anon/);
 });

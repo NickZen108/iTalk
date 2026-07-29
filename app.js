@@ -362,7 +362,8 @@
     session: null,
     timerId: null,
     approval: null,
-    canManageStaff: false
+    canManageStaff: false,
+    managedStudentEntry: null
   };
 
   const $ = selector => document.querySelector(selector);
@@ -464,6 +465,18 @@
     closeStudentAccess: $("#close-student-access")
   });
   Object.assign(els, {
+    studentManagementDialog: $("#student-management-dialog"),
+    studentManagementTitle: $("#student-management-title"),
+    studentDeviceList: $("#student-device-list"),
+    studentLifecycleDescription: $("#student-lifecycle-description"),
+    toggleStudentActive: $("#toggle-student-active"),
+    permanentDeletePanel: $("#permanent-delete-panel"),
+    confirmStudentDeletion: $("#confirm-student-deletion"),
+    deleteStudentPermanently: $("#delete-student-permanently"),
+    studentManagementStatus: $("#student-management-status"),
+    closeStudentManagement: $("#close-student-management")
+  });
+  Object.assign(els, {
     setupIcon: $("#setup-scenario-icon"),
     setupTitle: $("#setup-scenario-title"),
     setupGoal: $("#setup-scenario-goal"),
@@ -557,10 +570,15 @@
         progress.birthYear || null
       );
       state.approval = student;
+      const status = student.approval_status === "approved" && !student.active
+        ? "inactive"
+        : student.approval_status;
       return {
-        status: student.approval_status,
+        status,
         student,
-        message: student.approval_status === "approved"
+        message: status === "inactive"
+          ? "Elevprofilen er deaktiveret af skolen."
+          : student.approval_status === "approved"
           ? "Godkendt af en lærer. Du kan gå i gang."
           : student.approval_status === "rejected"
             ? "Tilmeldingen er afvist. Tal med en lærer."
@@ -609,6 +627,17 @@
 
   function saveLocalStudents() {
     store.write("elevspor.localStudents", STUDENTS);
+  }
+
+  function removeLocalStudent(studentId) {
+    const index = STUDENTS.findIndex(student => student.id === studentId);
+    if (index >= 0) STUDENTS.splice(index, 1);
+    delete state.progress[studentId];
+    localStorage.removeItem(`elevspor.backendStudent.${studentId}`);
+    localStorage.removeItem(`elevspor.studentDevice.${studentId}`);
+    if (state.studentId === studentId) state.studentId = "";
+    saveLocalStudents();
+    saveProgress();
   }
 
   function encodeStudentAccessProfile(profile) {
@@ -685,6 +714,65 @@
     await renderStudent();
   }
 
+  function formatDeviceDate(value) {
+    return new Intl.DateTimeFormat("da-DK", {
+      dateStyle: "short",
+      timeStyle: "short"
+    }).format(new Date(value));
+  }
+
+  function renderStudentManagement(entry) {
+    state.managedStudentEntry = entry;
+    const progress = state.progress[entry.student.id] || {};
+    const identity = studentIdentityLabel(entry.student, progress.birthYear);
+    const inactive = entry.approval.status === "inactive";
+    els.studentManagementTitle.textContent = identity;
+    els.studentDeviceList.replaceChildren();
+    const activeDevices = (entry.devices || []).filter(device => !device.revoked_at);
+    if (!activeDevices.length) {
+      emptyStudentGroup(els.studentDeviceList, "Ingen aktive enheder.");
+    }
+    activeDevices.forEach((device, index) => {
+      const item = document.createElement("article");
+      item.className = "student-device-item";
+      item.innerHTML = `<div><strong>Elev-enhed ${index + 1}</strong><p>Senest aktiv ${formatDeviceDate(device.last_used_at)}</p></div>`;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "secondary-button";
+      remove.textContent = "Fjern enhed";
+      remove.addEventListener("click", async () => {
+        remove.disabled = true;
+        try {
+          await globalThis.ElevsporSupabase.revokeStudentDevice(device.id);
+          device.revoked_at = new Date().toISOString();
+          renderStudentManagement(entry);
+          els.studentManagementStatus.textContent = "Enheden er fjernet og kan ikke længere åbne elevområdet. ✓";
+        } catch (error) {
+          els.studentManagementStatus.textContent = `Enheden kunne ikke fjernes: ${error.message}`;
+          remove.disabled = false;
+        }
+      });
+      item.append(remove);
+      els.studentDeviceList.append(item);
+    });
+    els.studentLifecycleDescription.textContent = inactive
+      ? "Eleven er deaktiveret. Historik bevares, men ingen enheder har adgang."
+      : "Deaktivering lukker alle elevens enheder, men bevarer historikken.";
+    els.toggleStudentActive.textContent = inactive ? "Genaktivér elev" : "Deaktivér elev";
+    els.toggleStudentActive.dataset.nextActive = inactive ? "true" : "false";
+    els.permanentDeletePanel.hidden = !state.canManageStaff;
+    els.confirmStudentDeletion.value = "";
+    els.confirmStudentDeletion.dataset.expected = identity;
+    els.deleteStudentPermanently.disabled = true;
+    els.studentManagementStatus.textContent = "";
+  }
+
+  function openStudentManagement(entry) {
+    renderStudentManagement(entry);
+    if (typeof els.studentManagementDialog.showModal === "function") els.studentManagementDialog.showModal();
+    else els.studentManagementDialog.setAttribute("open", "");
+  }
+
   async function redeemStudentAccessFromHash() {
     const match = location.hash.match(/^#\/elev-adgang\/([a-f0-9]{48})\/([A-Za-z0-9_-]+)$/);
     if (!match) return false;
@@ -739,6 +827,8 @@
     const identity = studentIdentityLabel(student, progress.birthYear);
     const status = approval.status === "approved"
       ? "Godkendt"
+      : approval.status === "inactive"
+        ? "Deaktiveret"
       : approval.status === "pending"
         ? "Afventer lærerens godkendelse"
         : approval.message;
@@ -775,6 +865,14 @@
       accessButton.textContent = "Opret elevadgang";
       accessButton.addEventListener("click", () => void openStudentAccess(student, approval.student.id, accessButton));
       actions.append(accessButton);
+    }
+    if (approval.student?.id && ["approved", "inactive"].includes(approval.status)) {
+      const devicesButton = document.createElement("button");
+      devicesButton.className = "secondary-button";
+      devicesButton.type = "button";
+      devicesButton.textContent = `Enheder (${(entry.devices || []).filter(device => !device.revoked_at).length})`;
+      devicesButton.addEventListener("click", () => openStudentManagement(entry));
+      actions.append(devicesButton);
     }
     const pupilButton = document.createElement("button");
     pupilButton.className = "secondary-button";
@@ -826,7 +924,13 @@
       state.studentId = student.id;
       currentProgress();
       const approval = await loadStudentApproval();
-      entries.push({ student, approval });
+      let devices = [];
+      if (approval.student?.id && ["approved", "inactive"].includes(approval.status)) {
+        try {
+          devices = await backend.listStudentDevices(approval.student.id);
+        } catch (_) {}
+      }
+      entries.push({ student, approval, devices });
     }
     state.studentId = "";
     store.write("italk.selectedStudent", "");
@@ -1297,6 +1401,51 @@
   els.copyStudentAccessCode.addEventListener("click", async () => {
     await navigator.clipboard.writeText(els.generatedStudentAccessCode.textContent);
     els.generatedStudentAccessStatus.textContent = "Engangskoden er kopieret ✓";
+  });
+  els.closeStudentManagement.addEventListener("click", () => els.studentManagementDialog.close());
+  els.toggleStudentActive.addEventListener("click", async () => {
+    const entry = state.managedStudentEntry;
+    if (!entry?.approval.student?.id) return;
+    const nextActive = els.toggleStudentActive.dataset.nextActive === "true";
+    if (!nextActive && !window.confirm(
+      "Deaktivér eleven? Alle elevens enheder mister adgang. Historikken bevares."
+    )) return;
+    els.toggleStudentActive.disabled = true;
+    els.studentManagementStatus.textContent = nextActive ? "Genaktiverer eleven…" : "Deaktiverer eleven…";
+    try {
+      await globalThis.ElevsporSupabase.setStudentActive(entry.approval.student.id, nextActive);
+      els.studentManagementDialog.close();
+      await renderSchoolDashboard("students");
+      els.studentsPageStatus.dataset.status = "success";
+      els.studentsPageStatus.textContent = nextActive
+        ? `${entry.student.name} er genaktiveret. Opret en ny elevadgang til enheden. ✓`
+        : `${entry.student.name} er deaktiveret, og alle enheder er fjernet. ✓`;
+    } catch (error) {
+      els.studentManagementStatus.textContent = `Elevstatus kunne ikke ændres: ${error.message}`;
+    } finally {
+      els.toggleStudentActive.disabled = false;
+    }
+  });
+  els.confirmStudentDeletion.addEventListener("input", () => {
+    els.deleteStudentPermanently.disabled =
+      els.confirmStudentDeletion.value.trim() !== els.confirmStudentDeletion.dataset.expected;
+  });
+  els.deleteStudentPermanently.addEventListener("click", async () => {
+    const entry = state.managedStudentEntry;
+    if (!entry?.approval.student?.id || els.deleteStudentPermanently.disabled) return;
+    els.deleteStudentPermanently.disabled = true;
+    els.studentManagementStatus.textContent = "Sletter elevens data permanent…";
+    try {
+      await globalThis.ElevsporSupabase.deleteStudentPermanently(entry.approval.student.id);
+      removeLocalStudent(entry.student.id);
+      els.studentManagementDialog.close();
+      await renderSchoolDashboard("students");
+      els.studentsPageStatus.dataset.status = "success";
+      els.studentsPageStatus.textContent = `${entry.student.name} er slettet permanent.`;
+    } catch (error) {
+      els.studentManagementStatus.textContent = `Eleven kunne ikke slettes: ${error.message}`;
+      els.confirmStudentDeletion.dispatchEvent(new Event("input"));
+    }
   });
   function sendStudentMessage() {
     const text = els.chatInput.value.trim();
