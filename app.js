@@ -395,6 +395,7 @@
     createStudentForm: $("#create-student-form"),
     newStudentName: $("#new-student-name"),
     newStudentBirthYear: $("#new-student-birth-year"),
+    createStudentButton: $("#create-student-button"),
     createStudentStatus: $("#create-student-status"),
     teacherStudentList: $("#teacher-student-list"),
     studentApprovalPanel: $("#student-approval-panel"),
@@ -927,34 +928,50 @@
     event.preventDefault();
     const name = els.newStudentName.value.trim();
     const birthYear = Number(els.newStudentBirthYear.value);
-    if (!name || birthYear < 1926 || birthYear > 2026) return;
-    const id = typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const student = {
-      id,
-      name,
-      avatar: "🎯",
-      profile: "Ny elevprofil",
-      levels: defaultLevels()
-    };
-    STUDENTS.push(student);
-    saveLocalStudents();
-    state.studentId = id;
-    const progress = currentProgress();
-    progress.birthYear = birthYear;
-    saveProgress();
-    els.createStudentStatus.textContent = "Opretter sikker elevtilmelding…";
+    const currentYear = new Date().getFullYear();
+    if (!name || !Number.isInteger(birthYear) || birthYear < 1926 || birthYear > currentYear) {
+      els.createStudentStatus.dataset.status = "error";
+      els.createStudentStatus.textContent = `Skriv et navn og et fødselsår mellem 1926 og ${currentYear}.`;
+      els.createStudentStatus.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      return;
+    }
+    els.createStudentButton.disabled = true;
+    els.createStudentButton.textContent = "Opretter elev…";
+    els.createStudentStatus.dataset.status = "loading";
+    els.createStudentStatus.textContent = "Opretter eleven sikkert på Test-Skole…";
     try {
+      const id = typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       await globalThis.ElevsporSupabase.getStudentApproval(
         backendLocalStudentId(id),
         birthYear
       );
+      const student = {
+        id,
+        name,
+        avatar: "🎯",
+        profile: "Ny elevprofil",
+        levels: defaultLevels()
+      };
+      STUDENTS.push(student);
+      saveLocalStudents();
+      state.studentId = id;
+      const progress = currentProgress();
+      progress.birthYear = birthYear;
+      saveProgress();
       els.createStudentForm.reset();
-      els.createStudentStatus.textContent = "Eleven er oprettet og afventer godkendelse.";
       await renderSchoolDashboard();
+      els.createStudentStatus.dataset.status = "success";
+      els.createStudentStatus.textContent = `${name} er oprettet og klar til godkendelse ✓`;
+      els.createStudentStatus.scrollIntoView({ block: "nearest", behavior: "smooth" });
     } catch (error) {
-      els.createStudentStatus.textContent = `Eleven kunne ikke tilmeldes: ${error.message}`;
+      els.createStudentStatus.dataset.status = "error";
+      els.createStudentStatus.textContent = `Eleven blev ikke oprettet: ${error.message}`;
+      els.createStudentStatus.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    } finally {
+      els.createStudentButton.disabled = false;
+      els.createStudentButton.textContent = "Opret elev til godkendelse";
     }
   });
   els.approveStudent.addEventListener("click", async () => {

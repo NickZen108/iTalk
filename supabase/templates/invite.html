@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="da">
+  <body style="margin:0;background:#f4f0ff;font-family:Arial,Helvetica,sans-serif;color:#241b35;">
+    <div style="display:none;max-height:0;overflow:hidden;">Du er inviteret til ElevSpor.</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f0ff;padding:32px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 12px 36px rgba(70,42,120,.14);">
+            <tr>
+              <td align="center" style="padding:32px 28px 18px;background:linear-gradient(135deg,#6c46d9,#ec5c99);">
+                <img src="https://nickzen108.github.io/iTalk/assets/elevspor-logo.png" width="150" alt="ElevSpor" style="display:block;width:150px;max-width:70%;height:auto;">
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:34px 34px 30px;">
+                <h1 style="margin:0 0 14px;font-size:27px;line-height:1.2;color:#38235f;">Du er inviteret</h1>
+                <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#5d526c;">En skoleadministrator har inviteret dig til ElevSpor. Brug knappen for at acceptere invitationen og oprette din medarbejderkonto.</p>
+                <p style="margin:0 0 26px;text-align:center;">
+                  <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#6c46d9;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:15px 28px;border-radius:12px;">Acceptér invitation</a>
+                </p>
+                <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#756b80;">Virker knappen ikke? Kopiér dette link ind i din browser:</p>
+                <p style="margin:0;word-break:break-all;font-size:12px;line-height:1.5;"><a href="{{ .ConfirmationURL }}" style="color:#6c46d9;">{{ .ConfirmationURL }}</a></p>
+                <hr style="border:0;border-top:1px solid #eee8f5;margin:28px 0 18px;">
+                <p style="margin:0;font-size:12px;line-height:1.5;color:#8a8094;">Forventede du ikke invitationen, behøver du ikke gøre noget.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

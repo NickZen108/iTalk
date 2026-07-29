@@ -122,6 +122,8 @@ test("forsiden har ingen åben elevvælger og elever oprettes i lærerområdet",
   assert.doesNotMatch(html, /Vælg en elev øverst/);
   assert.match(html, /id="school-dashboard-view"/);
   assert.match(html, /id="create-student-form"/);
+  assert.match(html, /id="create-student-button"/);
   assert.match(app, /renderSchoolDashboard/);
-  assert.match(app, /Opretter sikker elevtilmelding/);
+  assert.match(app, /Opretter eleven sikkert/);
+  assert.match(app, /er oprettet og klar til godkendelse/);
 });

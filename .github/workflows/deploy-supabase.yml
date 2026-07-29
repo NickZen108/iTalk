@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "supabase/migrations/**"
+      - "supabase/templates/**"
       - "supabase/config.toml"
   workflow_dispatch:
     inputs:
@@ -62,20 +63,30 @@ jobs:
       - name: Enable invite-only authentication hook
         shell: bash
         run: |
+          confirmation_template="$(jq -Rs . < supabase/templates/confirmation.html)"
+          invite_template="$(jq -Rs . < supabase/templates/invite.html)"
+          jq -n \
+            --argjson confirmation_template "$confirmation_template" \
+            --argjson invite_template "$invite_template" \
+            '{
+              site_url: "https://nickzen108.github.io/iTalk/",
+              mailer_autoconfirm: false,
+              mailer_otp_length: 8,
+              mfa_totp_enroll_enabled: true,
+              mfa_totp_verify_enabled: true,
+              hook_before_user_created_enabled: true,
+              hook_before_user_created_uri: "pg-functions://postgres/public/hook_allow_invited_staff",
+              mailer_subjects_confirmation: "Bekræft din ElevSpor-konto",
+              mailer_templates_confirmation_content: $confirmation_template,
+              mailer_subjects_invite: "Du er inviteret til ElevSpor",
+              mailer_templates_invite_content: $invite_template
+            }' > /tmp/elevspor-auth-patch.json
           curl --fail --silent --show-error \
             --request PATCH \
             "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
             --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             --header "Content-Type: application/json" \
-            --data '{
-              "site_url": "https://nickzen108.github.io/iTalk/",
-              "mailer_autoconfirm": false,
-              "mailer_otp_length": 8,
-              "mfa_totp_enroll_enabled": true,
-              "mfa_totp_verify_enabled": true,
-              "hook_before_user_created_enabled": true,
-              "hook_before_user_created_uri": "pg-functions://postgres/public/hook_allow_invited_staff"
-            }' \
+            --data-binary @/tmp/elevspor-auth-patch.json \
             --output /tmp/elevspor-auth-config.json
           jq -e '
             .site_url == "https://nickzen108.github.io/iTalk/"
@@ -85,8 +96,12 @@ jobs:
             and .mfa_totp_verify_enabled == true
             and .hook_before_user_created_enabled == true
             and .hook_before_user_created_uri == "pg-functions://postgres/public/hook_allow_invited_staff"
+            and .mailer_subjects_confirmation == "Bekræft din ElevSpor-konto"
+            and .mailer_subjects_invite == "Du er inviteret til ElevSpor"
+            and (.mailer_templates_confirmation_content | contains("{{ .ConfirmationURL }}"))
+            and (.mailer_templates_invite_content | contains("{{ .ConfirmationURL }}"))
           ' /tmp/elevspor-auth-config.json >/dev/null
-          echo "Invite-only auth hook and existing email/MFA safeguards are active."
+          echo "Invite-only auth hook, branded mail templates, and existing email/MFA safeguards are active."
 
       - name: Create Test-Skole owner bootstrap
         if: ${{ inputs.owner_email != '' }}

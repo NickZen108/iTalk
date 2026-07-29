@@ -103,22 +103,13 @@ async function getMembership() {
 
 async function ensureStudent(localId, birthYear) {
   const supabase = await requireClient();
-  const membership = await getMembership();
-  if (!membership) throw new Error("Medarbejderen er ikke knyttet til en skole.");
   const session = await getSession();
   if (!session) throw new Error("Login kræves.");
   const localReferenceHash = await hashLocalReference(localId);
-  const payload = {
-    school_id: membership.school_id,
+  const { data, error } = await supabase.rpc("ensure_school_student", {
     local_reference_hash: localReferenceHash,
-    birth_year: birthYear || null,
-    created_by: session.user.id
-  };
-  const { data, error } = await supabase
-    .from("students")
-    .upsert(payload, { onConflict: "school_id,local_reference_hash" })
-    .select("id,school_id,last_activity_at,approval_status,approval_requested_at,approved_at")
-    .single();
+    student_birth_year: birthYear || null
+  });
   if (error) throw error;
   return data;
 }

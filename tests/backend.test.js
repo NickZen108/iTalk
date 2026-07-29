@@ -19,6 +19,10 @@ const inviteOnlySql = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20260729093000_invite_only_staff.sql"),
   "utf8"
 );
+const reliableStudentSql = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20260729111500_reliable_student_creation.sql"),
+  "utf8"
+);
 
 test("backend-migrationen har de nødvendige tenant-tabeller", () => {
   [
@@ -118,6 +122,23 @@ test("nye elever afventer lærer og kan ikke skabe aktivitet før godkendelse", 
   assert.doesNotMatch(approvalSql, /grant execute on function public\.approve_student\(uuid\) to anon/);
 });
 
+test("elevoprettelse sker atomisk i medarbejderens egen skole", () => {
+  assert.match(reliableStudentSql, /create or replace function public\.ensure_school_student/);
+  assert.match(reliableStudentSql, /where user_id = \(select auth\.uid\(\)\)/);
+  assert.match(reliableStudentSql, /on conflict \(school_id, local_reference_hash\)/);
+  assert.match(reliableStudentSql, /grant execute on function public\.ensure_school_student\(text, integer\) to authenticated/);
+  assert.match(reliableStudentSql, /revoke all on function public\.ensure_school_student\(text, integer\) from public, anon/);
+});
+
+test("bekræftelses- og invitationsmails er brandede og har fallback-link", () => {
+  for (const file of ["confirmation.html", "invite.html"]) {
+    const template = fs.readFileSync(path.join(root, "supabase", "templates", file), "utf8");
+    assert.match(template, /elevspor-logo\.png/);
+    assert.match(template, /href="\{\{ \.ConfirmationURL \}\}"/);
+    assert.match(template, />\{\{ \.ConfirmationURL \}\}<\/a>/);
+  }
+});
+
 test("fakturering kræver aktivitet og pending elever kan derfor ikke faktureres", () => {
   assert.match(sql, /from public\.student_activities a/);
   assert.match(approvalSql, /drop policy activities_insert_own_school/);
@@ -144,6 +165,8 @@ test("hostede migrationer bruger kun GitHub-secrets med nødvendige rettigheder"
   assert.match(workflow, /supabase db push --linked/);
   assert.match(workflow, /api\.supabase\.com\/v1\/projects\/\$SUPABASE_PROJECT_REF\/config\/auth/);
   assert.match(workflow, /hook_before_user_created_enabled/);
+  assert.match(workflow, /mailer_templates_confirmation_content/);
+  assert.match(workflow, /mailer_templates_invite_content/);
   assert.doesNotMatch(workflow, /supabase config push/);
   assert.match(workflow, /supabase test db --linked/);
   assert.match(workflow, /SUPABASE_PUBLISHABLE_KEY/);

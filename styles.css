@@ -136,6 +136,9 @@ p { overflow-wrap: anywhere; }
 .teacher-form label span { display: block; margin-top: .15rem; color: var(--muted); font-size: .85rem; font-weight: 400; }
 textarea { width: 100%; resize: vertical; min-height: 80px; }
 .save-status { min-height: 1.4em; color: var(--brand); font-weight: 750; }
+.save-status[data-status="loading"] { color: var(--brand-dark); }
+.save-status[data-status="success"] { color: #16734a; }
+.save-status[data-status="error"] { color: #a52b43; }
 
 .timer { display: flex; align-items: center; gap: .45rem; padding: .55rem .75rem; border-radius: 999px; background: var(--ink); color: #fff; font-size: 1.15rem; }
 .conversation-heading { display: flex; gap: .9rem; align-items: center; margin: 1rem 0; }
