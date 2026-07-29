@@ -130,6 +130,15 @@ test("elevoprettelse sker atomisk i medarbejderens egen skole", () => {
   assert.match(reliableStudentSql, /revoke all on function public\.ensure_school_student\(text, integer\) from public, anon/);
 });
 
+test("elevoprettelsens lokale reference er entydig i PostgreSQL", () => {
+  const fixSql = fs.readFileSync(
+    path.join(root, "supabase", "migrations", "20260729132500_fix_student_reference_ambiguity.sql"),
+    "utf8"
+  );
+  assert.match(fixSql, /ensure_school_student_fn\.local_reference_hash/);
+  assert.match(fixSql, /on conflict on constraint students_school_id_local_reference_hash_key/);
+});
+
 test("bekræftelses- og invitationsmails er brandede og har fallback-link", () => {
   for (const file of ["confirmation.html", "invite.html"]) {
     const template = fs.readFileSync(path.join(root, "supabase", "templates", file), "utf8");
