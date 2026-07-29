@@ -107,7 +107,7 @@ begin
   returning * into changed_student;
 
   if changed_student.id is null then
-    raise exception 'Elevstatus er allerede valgt, eller eleven blev ikke fundet på din skole';
+    raise exception 'Godkendt elev blev ikke fundet på din skole';
   end if;
 
   if not requested_active then

@@ -55,10 +55,12 @@ select is(
   (select actor_name from public.list_student_audit_events('b6100000-0000-0000-0000-000000000001', 20) limit 1),
   'Audit Lærer', 'audit shows the school member display name'
 );
+reset role;
 update public.school_members
 set display_name = 'Nyt Navn'
 where school_id = 'b6000000-0000-0000-0000-000000000001'
   and user_id = '61000000-0000-0000-0000-000000000001';
+set local role authenticated;
 select is(
   (select actor_name from public.list_student_audit_events('b6100000-0000-0000-0000-000000000001', 20) limit 1),
   'Audit Lærer', 'audit keeps the actor name that applied when the event occurred'
