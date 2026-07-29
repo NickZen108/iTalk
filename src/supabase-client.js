@@ -210,6 +210,21 @@ async function listStudentAuditEvents(studentId, limit = 20) {
   return data;
 }
 
+async function listSchoolAuditEvents(schoolId, filters = {}) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("list_school_audit_events", {
+    target_school_id: schoolId,
+    result_limit: filters.limit || 500,
+    filter_from: filters.from || null,
+    filter_to: filters.to || null,
+    filter_actor_id: filters.actorId || null,
+    filter_student_id: filters.studentId || null,
+    filter_action: filters.action || null
+  });
+  if (error) throw error;
+  return data;
+}
+
 async function recordActivity(localId, activityType, durationSeconds, birthYear) {
   const supabase = await requireClient();
   const session = await getSession();
@@ -268,6 +283,7 @@ globalThis.ElevsporSupabase = {
   setStudentActive,
   deleteStudentPermanently,
   listStudentAuditEvents,
+  listSchoolAuditEvents,
   recordActivity,
   monthlyUsage,
   hashLocalReference

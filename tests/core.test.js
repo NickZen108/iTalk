@@ -235,3 +235,19 @@ test("elevindstillinger viser et serverbaseret auditspor", () => {
   assert.doesNotMatch(app, /Auditsporet kunne ikke hentes:[^;]+innerHTML/s);
   assert.match(client, /list_student_audit_events/);
 });
+
+test("administrator har samlet skole-auditspor med filtre og CSV", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const client = fs.readFileSync(path.join(__dirname, "..", "src", "supabase-client.js"), "utf8");
+  assert.match(html, /data-school-page="audit"/);
+  assert.match(html, /id="audit-from"/);
+  assert.match(html, /id="audit-actor"/);
+  assert.match(html, /id="audit-student"/);
+  assert.match(html, /id="audit-action"/);
+  assert.match(html, /id="export-school-audit"/);
+  assert.match(app, /Slettet eller ukendt elev/);
+  assert.match(app, /textContent = `\$\{auditStudentLabel/);
+  assert.match(app, /text\/csv;charset=utf-8/);
+  assert.match(client, /list_school_audit_events/);
+});

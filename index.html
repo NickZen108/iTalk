@@ -78,6 +78,7 @@
         <button class="school-nav-button" type="button" data-school-page="students">Elever</button>
         <button class="school-nav-button" type="button" data-school-page="create-student">Opret elev</button>
         <button id="staff-page-button" class="school-nav-button" type="button" data-school-page="staff" hidden>Medarbejdere</button>
+        <button id="audit-page-button" class="school-nav-button" type="button" data-school-page="audit" hidden>Auditspor</button>
       </nav>
 
       <section id="students-page" class="school-page">
@@ -151,6 +152,34 @@
           <p id="staff-invitation-status" class="save-status" aria-live="polite"></p>
         </div>
       </section>
+      </section>
+
+      <section id="audit-page" class="school-page" hidden>
+        <div class="section-heading school-page-heading">
+          <div>
+            <p class="eyebrow">Skolens administration</p>
+            <h2>Samlet auditspor</h2>
+            <p>Administrative elevændringer på tværs af skolen. Kun administratorer kan se siden.</p>
+          </div>
+          <button id="export-school-audit" class="secondary-button" type="button">Eksportér CSV</button>
+        </div>
+        <form id="school-audit-filters" class="audit-filters">
+          <label>Fra dato<input id="audit-from" type="date"></label>
+          <label>Til dato<input id="audit-to" type="date"></label>
+          <label>Medarbejder<select id="audit-actor"><option value="">Alle medarbejdere</option></select></label>
+          <label>Elev<select id="audit-student"><option value="">Alle elever</option></select></label>
+          <label>Handling<select id="audit-action">
+            <option value="">Alle handlinger</option>
+            <option value="device_removed">Enhed fjernet</option>
+            <option value="student_deactivated">Elev deaktiveret</option>
+            <option value="student_reactivated">Elev genaktiveret</option>
+            <option value="student_deleted">Elev slettet permanent</option>
+          </select></label>
+          <button class="primary-button" type="submit">Anvend filtre</button>
+          <button id="reset-school-audit" class="secondary-button" type="button">Nulstil</button>
+        </form>
+        <p id="school-audit-status" class="save-status" aria-live="polite"></p>
+        <div id="school-audit-list" class="school-audit-list"></div>
       </section>
     </section>
 

@@ -301,7 +301,8 @@
   const SCHOOL_ROUTES = Object.freeze({
     students: "/elever",
     "create-student": "/opret-elev",
-    staff: "/medarbejdere"
+    staff: "/medarbejdere",
+    audit: "/auditspor"
   });
   const SCHOOL_PAGES = Object.freeze(
     Object.fromEntries(Object.entries(SCHOOL_ROUTES).map(([page, route]) => [route, page]))
@@ -363,7 +364,10 @@
     timerId: null,
     approval: null,
     canManageStaff: false,
-    managedStudentEntry: null
+    managedStudentEntry: null,
+    schoolAuditEvents: [],
+    schoolAuditStudentLabels: new Map(),
+    schoolId: ""
   };
 
   const $ = selector => document.querySelector(selector);
@@ -430,6 +434,7 @@
     schoolPages: Array.from(document.querySelectorAll(".school-page")),
     schoolNavButtons: Array.from(document.querySelectorAll(".school-nav-button")),
     staffPageButton: $("#staff-page-button"),
+    auditPageButton: $("#audit-page-button"),
     pendingStudentList: $("#pending-student-list"),
     recentStudentList: $("#recent-student-list"),
     allStudentList: $("#all-student-list"),
@@ -448,6 +453,18 @@
     staffInvitationStatus: $("#staff-invitation-status"),
     copyStaffInvitation: $("#copy-staff-invitation")
   };
+  Object.assign(els, {
+    schoolAuditFilters: $("#school-audit-filters"),
+    auditFrom: $("#audit-from"),
+    auditTo: $("#audit-to"),
+    auditActor: $("#audit-actor"),
+    auditStudent: $("#audit-student"),
+    auditAction: $("#audit-action"),
+    schoolAuditStatus: $("#school-audit-status"),
+    schoolAuditList: $("#school-audit-list"),
+    exportSchoolAudit: $("#export-school-audit"),
+    resetSchoolAudit: $("#reset-school-audit")
+  });
   Object.assign(els, {
     studentAccessForm: $("#student-access-form"),
     studentAccessName: $("#student-access-name"),
@@ -837,7 +854,7 @@
 
   function showSchoolPage(name, options = {}) {
     if (!SCHOOL_ROUTES[name]) name = "students";
-    if (name === "staff" && !state.canManageStaff) name = "students";
+    if (["staff", "audit"].includes(name) && !state.canManageStaff) name = "students";
     els.schoolPages.forEach(page => { page.hidden = page.id !== `${name}-page`; });
     els.schoolNavButtons.forEach(button => {
       const active = button.dataset.schoolPage === name;
@@ -854,6 +871,99 @@
     const pageLabel = els.schoolNavButtons
       .find(button => button.dataset.schoolPage === name)?.textContent || "Lærerområde";
     document.title = `${pageLabel} · Elevspor`;
+    if (name === "audit") void loadSchoolAudit();
+  }
+
+  const AUDIT_ACTION_LABELS = Object.freeze({
+    device_removed: "Enhed fjernet",
+    student_deactivated: "Elev deaktiveret",
+    student_reactivated: "Elev genaktiveret",
+    student_deleted: "Elev slettet permanent"
+  });
+
+  function auditStudentLabel(studentId) {
+    return state.schoolAuditStudentLabels.get(studentId) || "Slettet eller ukendt elev";
+  }
+
+  function renderSchoolAudit(events) {
+    els.schoolAuditList.replaceChildren();
+    if (!events.length) {
+      emptyStudentGroup(els.schoolAuditList, "Ingen ændringer matcher filtrene.");
+      return;
+    }
+    events.forEach(event => {
+      const item = document.createElement("article");
+      item.className = "school-audit-item";
+      const when = document.createElement("time");
+      when.dateTime = event.occurred_at;
+      when.textContent = formatDeviceDate(event.occurred_at);
+      const content = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = AUDIT_ACTION_LABELS[event.action] || "Administrativ ændring";
+      const details = document.createElement("p");
+      details.textContent = `${auditStudentLabel(event.subject_student_id)} · ${event.actor_name}`;
+      content.append(title, details);
+      item.append(when, content);
+      els.schoolAuditList.append(item);
+    });
+  }
+
+  function exclusiveDayAfter(value) {
+    if (!value) return null;
+    const date = new Date(`${value}T00:00:00`);
+    date.setDate(date.getDate() + 1);
+    return date.toISOString();
+  }
+
+  async function loadSchoolAudit() {
+    if (!state.canManageStaff || !state.schoolId) return;
+    els.schoolAuditStatus.textContent = "Henter auditspor…";
+    els.exportSchoolAudit.disabled = true;
+    try {
+      const events = await globalThis.ElevsporSupabase.listSchoolAuditEvents(state.schoolId, {
+        from: els.auditFrom.value ? new Date(`${els.auditFrom.value}T00:00:00`).toISOString() : null,
+        to: exclusiveDayAfter(els.auditTo.value),
+        actorId: els.auditActor.value,
+        studentId: els.auditStudent.value,
+        action: els.auditAction.value
+      });
+      state.schoolAuditEvents = events;
+      const actors = [...new Map(events.filter(item => item.actor_id).map(item => [item.actor_id, item.actor_name])).entries()]
+        .sort((a, b) => a[1].localeCompare(b[1], "da"));
+      const selectedActor = els.auditActor.value;
+      els.auditActor.replaceChildren(new Option("Alle medarbejdere", ""));
+      actors.forEach(([id, name]) => els.auditActor.add(new Option(name, id)));
+      els.auditActor.value = selectedActor;
+      renderSchoolAudit(events);
+      els.schoolAuditStatus.textContent = `${events.length} ændringer fundet.`;
+      els.exportSchoolAudit.disabled = !events.length;
+    } catch (error) {
+      state.schoolAuditEvents = [];
+      els.schoolAuditList.replaceChildren();
+      emptyStudentGroup(els.schoolAuditList, `Auditsporet kunne ikke hentes: ${error.message}`);
+      els.schoolAuditStatus.textContent = "";
+    }
+  }
+
+  function csvCell(value) {
+    return `"${String(value ?? "").replace(/"/g, '""')}"`;
+  }
+
+  function exportSchoolAuditCsv() {
+    const rows = [["Tidspunkt", "Handling", "Elev", "Medarbejder"], ...state.schoolAuditEvents.map(event => [
+      event.occurred_at,
+      AUDIT_ACTION_LABELS[event.action] || event.action,
+      auditStudentLabel(event.subject_student_id),
+      event.actor_name
+    ])];
+    const blob = new Blob([`\ufeff${rows.map(row => row.map(csvCell).join(";")).join("\r\n")}`], {
+      type: "text/csv;charset=utf-8"
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `elevspor-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
   }
 
   function emptyStudentGroup(container, message) {
@@ -965,12 +1075,14 @@
     els.teacherProfileName.textContent = `${displayName} · ${membership.schools?.name || "skolen"}`;
     const canManageStaff = ["owner", "admin"].includes(membership.role);
     state.canManageStaff = canManageStaff;
+    state.schoolId = membership.school_id;
     els.staffInvitationPanel.hidden = !canManageStaff;
     els.staffPageButton.hidden = !canManageStaff;
+    els.auditPageButton.hidden = !canManageStaff;
     page = page
       || schoolPageFromHash(location.hash)
       || store.read("elevspor.lastSchoolPage", "students");
-    if (!canManageStaff && page === "staff") page = "students";
+    if (!canManageStaff && ["staff", "audit"].includes(page)) page = "students";
     const entries = [];
     for (const student of STUDENTS) {
       state.studentId = student.id;
@@ -984,6 +1096,18 @@
       }
       entries.push({ student, approval, devices });
     }
+    state.schoolAuditStudentLabels = new Map(entries
+      .filter(entry => entry.approval.student?.id)
+      .map(entry => [
+        entry.approval.student.id,
+        studentIdentityLabel(entry.student, state.progress[entry.student.id]?.birthYear)
+      ]));
+    const selectedStudent = els.auditStudent.value;
+    els.auditStudent.replaceChildren(new Option("Alle elever", ""));
+    [...state.schoolAuditStudentLabels.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1], "da"))
+      .forEach(([id, label]) => els.auditStudent.add(new Option(label, id)));
+    els.auditStudent.value = selectedStudent;
     state.studentId = "";
     store.write("italk.selectedStudent", "");
     const pending = entries.filter(entry => entry.approval.status === "pending");
@@ -1416,6 +1540,15 @@
   els.schoolNavButtons.forEach(button => {
     button.addEventListener("click", () => showSchoolPage(button.dataset.schoolPage));
   });
+  els.schoolAuditFilters.addEventListener("submit", event => {
+    event.preventDefault();
+    void loadSchoolAudit();
+  });
+  els.resetSchoolAudit.addEventListener("click", () => {
+    els.schoolAuditFilters.reset();
+    void loadSchoolAudit();
+  });
+  els.exportSchoolAudit.addEventListener("click", exportSchoolAuditCsv);
   window.addEventListener("popstate", () => {
     if (document.querySelector("#school-dashboard-view").hidden) return;
     const page = schoolPageFromHash(location.hash);
