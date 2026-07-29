@@ -3,7 +3,8 @@ const assert = require("node:assert/strict");
 const {
   FACTORS, STUDENTS, SCENARIOS, clampLevel, describeFactor,
   defaultLevels, topicProgress, updateRecords, createProgress, chronologicalAge, effectiveAge, rememberTopic,
-  createCustomScenario, getInitiator, isConversationPassed, chooseReply
+  createCustomScenario, getInitiator, isConversationPassed, chooseReply,
+  schoolPageFromHash, schoolHashForPage
 } = require("../app.js");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -155,4 +156,20 @@ test("indloggede medarbejdere kan ikke strande på forsiden", () => {
   assert.match(app, /els\.home\.addEventListener\("click", async[\s\S]*if \(session\)[\s\S]*await renderSchoolDashboard\(\)/);
   assert.match(app, /showView\("welcome"\);\s+void refreshSchoolSession\(\);/);
   assert.doesNotMatch(app, /void refreshSchoolSession\(\);\s+showView\("welcome"\);/);
+});
+
+test("lærerområdets undersider har stabile URL'er", () => {
+  assert.equal(schoolHashForPage("students"), "#/elever");
+  assert.equal(schoolHashForPage("create-student"), "#/opret-elev");
+  assert.equal(schoolHashForPage("staff"), "#/medarbejdere");
+  assert.equal(schoolPageFromHash("#/elever"), "students");
+  assert.equal(schoolPageFromHash("#/opret-elev/"), "create-student");
+  assert.equal(schoolPageFromHash("#/medarbejdere"), "staff");
+  assert.equal(schoolPageFromHash("#/ukendt"), "");
+
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.match(app, /elevspor\.lastSchoolPage/);
+  assert.match(app, /window\.addEventListener\("popstate"/);
+  assert.match(app, /history\.pushState/);
+  assert.match(app, /schoolPageFromHash\(location\.hash\)[\s\S]*elevspor\.lastSchoolPage/);
 });

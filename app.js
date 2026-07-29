@@ -298,10 +298,29 @@
     return scenario.replies[index];
   }
 
+  const SCHOOL_ROUTES = Object.freeze({
+    students: "/elever",
+    "create-student": "/opret-elev",
+    staff: "/medarbejdere"
+  });
+  const SCHOOL_PAGES = Object.freeze(
+    Object.fromEntries(Object.entries(SCHOOL_ROUTES).map(([page, route]) => [route, page]))
+  );
+
+  function schoolPageFromHash(hash = "") {
+    const route = String(hash).replace(/^#/, "").replace(/\/+$/, "") || "/";
+    return SCHOOL_PAGES[route] || "";
+  }
+
+  function schoolHashForPage(page) {
+    return SCHOOL_ROUTES[page] ? `#${SCHOOL_ROUTES[page]}` : "";
+  }
+
   const api = {
     FACTORS, STUDENTS, SCENARIOS, clampLevel, describeFactor,
     defaultLevels, topicProgress, updateRecords, createProgress, chronologicalAge, effectiveAge, rememberTopic,
-    createCustomScenario, getInitiator, isConversationPassed, chooseReply
+    createCustomScenario, getInitiator, isConversationPassed, chooseReply,
+    schoolPageFromHash, schoolHashForPage
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.iTalkCore = api;
@@ -335,7 +354,8 @@
     activeScenario: null,
     session: null,
     timerId: null,
-    approval: null
+    approval: null,
+    canManageStaff: false
   };
 
   const $ = selector => document.querySelector(selector);
@@ -546,13 +566,25 @@
     store.write("elevspor.localStudents", STUDENTS);
   }
 
-  function showSchoolPage(name) {
+  function showSchoolPage(name, options = {}) {
+    if (!SCHOOL_ROUTES[name]) name = "students";
+    if (name === "staff" && !state.canManageStaff) name = "students";
     els.schoolPages.forEach(page => { page.hidden = page.id !== `${name}-page`; });
     els.schoolNavButtons.forEach(button => {
       const active = button.dataset.schoolPage === name;
       button.classList.toggle("active", active);
       button.setAttribute("aria-current", active ? "page" : "false");
     });
+    store.write("elevspor.lastSchoolPage", name);
+    const nextHash = schoolHashForPage(name);
+    if (options.updateRoute !== false && location.hash !== nextHash) {
+      const nextUrl = `${location.pathname}${location.search}${nextHash}`;
+      if (options.replace) history.replaceState({}, "", nextUrl);
+      else history.pushState({}, "", nextUrl);
+    }
+    const pageLabel = els.schoolNavButtons
+      .find(button => button.dataset.schoolPage === name)?.textContent || "Lærerområde";
+    document.title = `${pageLabel} · Elevspor`;
   }
 
   function emptyStudentGroup(container, message) {
@@ -621,7 +653,7 @@
     return card;
   }
 
-  async function renderSchoolDashboard(page = "students", highlightStudentId = "") {
+  async function renderSchoolDashboard(page = "", highlightStudentId = "") {
     const backend = globalThis.ElevsporSupabase;
     const session = await backend?.getSession();
     if (!session) {
@@ -638,8 +670,12 @@
       || "Lærer";
     els.teacherProfileName.textContent = `${displayName} · ${membership.schools?.name || "skolen"}`;
     const canManageStaff = ["owner", "admin"].includes(membership.role);
+    state.canManageStaff = canManageStaff;
     els.staffInvitationPanel.hidden = !canManageStaff;
     els.staffPageButton.hidden = !canManageStaff;
+    page = page
+      || schoolPageFromHash(location.hash)
+      || store.read("elevspor.lastSchoolPage", "students");
     if (!canManageStaff && page === "staff") page = "students";
     const entries = [];
     for (const student of STUDENTS) {
@@ -669,7 +705,7 @@
     if (!approved.length) emptyStudentGroup(els.recentStudentList, "Ingen elever er godkendt endnu.");
     if (!entries.length) emptyStudentGroup(els.allStudentList, "Der er endnu ingen elever på denne enhed.");
     els.studentSearch.value = "";
-    showSchoolPage(page);
+    showSchoolPage(page, { replace: Boolean(schoolPageFromHash(location.hash)) });
     showView("school-dashboard");
     const highlighted = document.querySelector(".new-student-highlight");
     if (highlighted) highlighted.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -1060,6 +1096,12 @@
   els.schoolNavButtons.forEach(button => {
     button.addEventListener("click", () => showSchoolPage(button.dataset.schoolPage));
   });
+  window.addEventListener("popstate", () => {
+    if (document.querySelector("#school-dashboard-view").hidden) return;
+    const page = schoolPageFromHash(location.hash);
+    if (page) showSchoolPage(page, { updateRoute: false });
+    else showSchoolPage(store.read("elevspor.lastSchoolPage", "students"), { replace: true });
+  });
   els.studentSearch.addEventListener("input", () => {
     const query = els.studentSearch.value.trim().toLocaleLowerCase("da");
     Array.from(els.allStudentList.querySelectorAll(".student-admin-card")).forEach(card => {
@@ -1274,6 +1316,8 @@
   });
   els.dashboardSignout.addEventListener("click", async () => {
     await globalThis.ElevsporSupabase.signOut();
+    history.replaceState({}, "", location.pathname);
+    document.title = "Elevspor – samtaletræning";
     showView("welcome");
     await refreshSchoolSession();
   });
