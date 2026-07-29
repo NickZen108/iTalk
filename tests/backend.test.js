@@ -179,5 +179,6 @@ test("den offentlige brugerflade viser kun signup via invitationslink", () => {
   assert.match(html, />Opret inviteret konto</);
   assert.match(app, /const accessParams = new URLSearchParams\(location\.search\)/);
   assert.match(app, /accessParams\.get\("invite"\)/);
+  assert.match(app, /rememberStaffAccessFromUrl\(\);\s+await globalThis\.ElevsporSupabase\.signIn/);
   assert.match(app, /claimSchoolInvitation/);
 });

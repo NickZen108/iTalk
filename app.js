@@ -1082,10 +1082,22 @@
     }
   }
 
+  function rememberStaffAccessFromUrl() {
+    const accessParams = new URLSearchParams(location.search);
+    const bootstrapToken = accessParams.get("bootstrap");
+    const inviteToken = accessParams.get("invite");
+    if (!bootstrapToken && !inviteToken) return;
+    store.write("elevspor.pendingStaffAccess", {
+      type: bootstrapToken ? "bootstrap" : "invite",
+      token: bootstrapToken || inviteToken
+    });
+  }
+
   els.schoolLoginForm.addEventListener("submit", async event => {
     event.preventDefault();
     els.schoolSessionStatus.textContent = "Logger ind…";
     try {
+      rememberStaffAccessFromUrl();
       await globalThis.ElevsporSupabase.signIn(
         els.schoolEmail.value.trim(),
         els.schoolPassword.value
@@ -1107,10 +1119,7 @@
     if (!els.schoolLoginForm.reportValidity()) return;
     els.schoolSessionStatus.textContent = "Kontrollerer invitation og opretter medarbejder…";
     try {
-      store.write("elevspor.pendingStaffAccess", {
-        type: bootstrapToken ? "bootstrap" : "invite",
-        token: bootstrapToken || inviteToken
-      });
+      rememberStaffAccessFromUrl();
       const result = await globalThis.ElevsporSupabase.signUp(
         els.schoolEmail.value.trim(),
         els.schoolPassword.value
