@@ -47,6 +47,10 @@ const studentNamesSql = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20260730080000_student_display_names.sql"),
   "utf8"
 );
+const restoredStudentGrantsSql = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20260730081000_restore_student_table_rls_grants.sql"),
+  "utf8"
+);
 
 test("backend-migrationen har de nødvendige tenant-tabeller", () => {
   [
@@ -98,6 +102,7 @@ test("elevnavne lagres skoleafgrænset gennem validerede RPC'er", () => {
   assert.match(studentNamesSql, /create or replace function public\.list_school_students\(\)/);
   assert.match(studentNamesSql, /where public\.is_school_member\(s\.school_id\)/);
   assert.match(studentNamesSql, /revoke insert, update, delete on public\.students from authenticated/);
+  assert.match(restoredStudentGrantsSql, /grant select, insert, update on public\.students to authenticated/);
   assert.match(studentNamesSql, /grant execute on function public\.list_school_students\(\) to authenticated/);
   assert.doesNotMatch(studentNamesSql, /grant execute on function public\.list_school_students\(\) to anon/);
   assert.match(studentNamesSql, /create or replace function public\.record_staff_student_activity\(/);
