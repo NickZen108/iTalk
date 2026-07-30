@@ -127,6 +127,22 @@ test("resultatresuméet viser elevnavnet og klienten synkroniserer det skoleafgr
   assert.doesNotMatch(app, /url\.searchParams\.(?:set|append)\([^)]*name/i);
 });
 
+test("privatlivsteksten forklarer data og rettigheder til både elev og skole", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  assert.match(html, /id="privacy-dialog"/);
+  assert.match(html, /Kort fortalt til eleven/);
+  assert.match(html, /Til forældre og medarbejdere/);
+  assert.match(html, /Dataansvarlig:/);
+  assert.match(html, /Rettigheder:/);
+  assert.doesNotMatch(html, /Elevnavne, elevfotos og samtaleindhold sendes ikke til Supabase/);
+});
+
+test("sikkerhedssiden linker skolen til den komplette godkendelsespakke", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  assert.match(html, /skolens trin-for-trin-godkendelsespakke/i);
+  assert.match(html, /github\.com\/NickZen108\/iTalk\/tree\/main\/docs\/compliance/);
+});
+
 test("alder kan tilpasses med en skjult mental override", () => {
   assert.equal(chronologicalAge(2016, 2026), 10);
   assert.equal(chronologicalAge(3000, 2026), null);
@@ -381,4 +397,44 @@ test("administrator har samlet skole-auditspor med filtre og CSV", () => {
   assert.match(app, /textContent = `\$\{auditStudentLabel/);
   assert.match(app, /text\/csv;charset=utf-8/);
   assert.match(client, /list_school_audit_events/);
+});
+
+test("administrator kan opsætte og bekræfte MFA fra sikkerhedssiden", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const client = fs.readFileSync(path.join(__dirname, "..", "src", "supabase-client.js"), "utf8");
+  assert.match(html, /data-school-page="security"/);
+  assert.match(html, /id="mfa-qr-code"/);
+  assert.match(html, /id="mfa-code"/);
+  assert.match(app, /refreshMfaPanel/);
+  assert.match(client, /auth\.mfa\.listFactors/);
+  assert.match(client, /auth\.mfa\.getAuthenticatorAssuranceLevel/);
+  assert.match(client, /auth\.mfa\.enroll/);
+  assert.match(client, /auth\.mfa\.challenge/);
+  assert.match(client, /auth\.mfa\.verify/);
+});
+
+test("skolen kan styre retention og køre gratis manuel oprydning", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const client = fs.readFileSync(path.join(__dirname, "..", "src", "supabase-client.js"), "utf8");
+  assert.match(html, /id="retention-days"/);
+  assert.match(html, /id="purge-expired-data"/);
+  assert.match(html, /Supabase Free køres oprydningen manuelt/);
+  assert.match(app, /refreshRetentionPanel/);
+  assert.match(client, /set_school_retention_days/);
+  assert.match(client, /purge_school_expired_data/);
+});
+
+test("lærerens elevdialog understøtter indsigt og berigtigelse", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const client = fs.readFileSync(path.join(__dirname, "..", "src", "supabase-client.js"), "utf8");
+  assert.match(html, /id="rectify-student-form"/);
+  assert.match(html, /id="export-student-data"/);
+  assert.match(app, /application\/json;charset=utf-8/);
+  assert.match(app, /saveLocalStudents\(\)/);
+  assert.match(client, /rectify_school_student/);
+  assert.match(client, /export_school_student_data/);
+  assert.match(html, /id="delete-student-permanently"/);
 });

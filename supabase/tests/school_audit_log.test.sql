@@ -28,6 +28,7 @@ values
 
 set local role authenticated;
 select set_config('request.jwt.claim.role','authenticated',true);
+select set_config('request.jwt.claim.aal','aal2',true);
 select set_config('request.jwt.claim.sub','62000000-0000-0000-0000-000000000001',true);
 select is((select count(*)::int from public.list_school_audit_events('b7000000-0000-0000-0000-000000000001')),2,'owner sees own school events');
 select is((select count(*)::int from public.list_school_audit_events('b7000000-0000-0000-0000-000000000002')),0,'owner cannot see another school');

@@ -36,6 +36,7 @@ insert into public.student_devices (
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '51000000-0000-0000-0000-000000000001', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claim.aal', 'aal2', true);
 select is(
   (select count(*)::integer from public.list_student_devices('a5100000-0000-0000-0000-000000000001')),
   1, 'teacher sees devices for a pupil at the same school'

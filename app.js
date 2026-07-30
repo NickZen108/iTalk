@@ -302,6 +302,7 @@
     students: "/elever",
     "create-student": "/opret-elev",
     staff: "/medarbejdere",
+    security: "/sikkerhed",
     audit: "/auditspor"
   });
   const SCHOOL_PAGES = Object.freeze(
@@ -482,6 +483,7 @@
     schoolPages: Array.from(document.querySelectorAll(".school-page")),
     schoolNavButtons: Array.from(document.querySelectorAll(".school-nav-button")),
     staffPageButton: $("#staff-page-button"),
+    securityPageButton: $("#security-page-button"),
     auditPageButton: $("#audit-page-button"),
     pendingStudentList: $("#pending-student-list"),
     recentStudentList: $("#recent-student-list"),
@@ -503,6 +505,25 @@
     copyStaffInvitation: $("#copy-staff-invitation"),
     staffInvitationEmpty: $("#staff-invitation-empty")
   };
+  Object.assign(els, {
+    mfaStatus: $("#mfa-status"),
+    startMfaEnrollment: $("#start-mfa-enrollment"),
+    mfaEnrollment: $("#mfa-enrollment"),
+    mfaQrCode: $("#mfa-qr-code"),
+    mfaSecret: $("#mfa-secret"),
+    mfaVerifyForm: $("#mfa-verify-form"),
+    mfaCode: $("#mfa-code"),
+    removeMfa: $("#remove-mfa"),
+    openPrivacy: $("#open-privacy"),
+    privacyDialog: $("#privacy-dialog"),
+    closePrivacy: $("#close-privacy")
+  });
+  Object.assign(els, {
+    retentionForm: $("#retention-form"),
+    retentionDays: $("#retention-days"),
+    retentionStatus: $("#retention-status"),
+    purgeExpiredData: $("#purge-expired-data")
+  });
   Object.assign(els, {
     schoolAuditFilters: $("#school-audit-filters"),
     auditFrom: $("#audit-from"),
@@ -544,6 +565,9 @@
     permanentDeletePanel: $("#permanent-delete-panel"),
     confirmStudentDeletion: $("#confirm-student-deletion"),
     deleteStudentPermanently: $("#delete-student-permanently"),
+    rectifyStudentForm: $("#rectify-student-form"),
+    rectifyStudentName: $("#rectify-student-name"),
+    exportStudentData: $("#export-student-data"),
     studentManagementStatus: $("#student-management-status"),
     closeStudentManagement: $("#close-student-management")
   });
@@ -839,6 +863,7 @@
       device_removed: "Enhed fjernet",
       student_deactivated: "Elev deaktiveret",
       student_reactivated: "Elev genaktiveret",
+      student_rectified: "Elevoplysninger rettet",
       student_deleted: "Elev slettet permanent"
     };
     if (!events.length) {
@@ -907,6 +932,7 @@
     els.permanentDeletePanel.hidden = !state.canManageStaff;
     els.confirmStudentDeletion.value = "";
     els.confirmStudentDeletion.dataset.expected = identity;
+    els.rectifyStudentName.value = entry.student.name;
     els.deleteStudentPermanently.disabled = true;
     els.studentManagementStatus.textContent = "";
   }
@@ -957,7 +983,7 @@
 
   function showSchoolPage(name, options = {}) {
     if (!SCHOOL_ROUTES[name]) name = "students";
-    if (["staff", "audit"].includes(name) && !state.canManageStaff) name = "students";
+    if (["staff", "security", "audit"].includes(name) && !state.canManageStaff) name = "students";
     els.schoolPages.forEach(page => { page.hidden = page.id !== `${name}-page`; });
     els.schoolNavButtons.forEach(button => {
       const active = button.dataset.schoolPage === name;
@@ -975,6 +1001,53 @@
       .find(button => button.dataset.schoolPage === name)?.textContent || "Lærerområde";
     document.title = `${pageLabel} · Elevspor`;
     if (name === "audit") void loadSchoolAudit();
+    if (name === "security") {
+      void refreshMfaPanel();
+      void refreshRetentionPanel();
+    }
+  }
+
+  async function refreshMfaPanel() {
+    const backend = globalThis.ElevsporSupabase;
+    els.mfaStatus.textContent = "Kontrollerer sikkerhedsstatus…";
+    try {
+      const status = await backend.getMfaStatus();
+      state.mfaFactor = status.verifiedFactors[0] || null;
+      state.pendingMfaFactor = null;
+      els.mfaEnrollment.hidden = true;
+      els.mfaVerifyForm.hidden = !state.mfaFactor || status.currentLevel === "aal2";
+      els.startMfaEnrollment.hidden = Boolean(state.mfaFactor);
+      els.removeMfa.hidden = !state.mfaFactor;
+      if (!state.mfaFactor) {
+        els.mfaStatus.textContent = "MFA er ikke opsat. Administratorhandlinger er låst.";
+      } else if (status.currentLevel === "aal2") {
+        els.mfaStatus.textContent = "MFA er aktiv, og denne session er bekræftet på AAL2. ✓";
+      } else {
+        els.mfaStatus.textContent = "MFA er opsat. Indtast en kode for at låse administratorhandlinger op i denne session.";
+      }
+    } catch (error) {
+      els.mfaStatus.textContent = `Sikkerhedsstatus kunne ikke hentes: ${error.message}`;
+    }
+  }
+
+  async function refreshRetentionPanel() {
+    els.retentionStatus.textContent = "Henter opbevaringsstatus…";
+    try {
+      const settings = await globalThis.ElevsporSupabase.getRetentionSettings(state.schoolId);
+      if (!settings) {
+        els.retentionStatus.textContent = "Status kræver en AAL2-bekræftet administratorsession.";
+        return;
+      }
+      els.retentionDays.value = settings.retention_days;
+      const expired = Number(settings.expired_activities)
+        + Number(settings.expired_access_grants)
+        + Number(settings.expired_revoked_devices)
+        + Number(settings.expired_audit_events);
+      els.retentionStatus.textContent =
+        `${settings.retention_days} dage · ${expired} poster er udløbet og klar til manuel oprydning.`;
+    } catch (error) {
+      els.retentionStatus.textContent = `Opbevaringsstatus kunne ikke hentes: ${error.message}`;
+    }
   }
 
   function setAdminOnboardingVisible(visible) {
@@ -1110,6 +1183,7 @@
     device_removed: "Enhed fjernet",
     student_deactivated: "Elev deaktiveret",
     student_reactivated: "Elev genaktiveret",
+    student_rectified: "Elevoplysninger rettet",
     student_deleted: "Elev slettet permanent"
   });
 
@@ -1332,6 +1406,7 @@
     state.schoolId = membership.school_id;
     els.staffInvitationPanel.hidden = !canManageStaff;
     els.staffPageButton.hidden = !canManageStaff;
+    els.securityPageButton.hidden = !canManageStaff;
     els.auditPageButton.hidden = !canManageStaff;
     els.showAdminOnboarding.hidden = !canManageStaff;
     if (canManageStaff) {
@@ -1345,7 +1420,7 @@
     page = page
       || schoolPageFromHash(location.hash)
       || store.read("elevspor.lastSchoolPage", "students");
-    if (!canManageStaff && ["staff", "audit"].includes(page)) page = "students";
+    if (!canManageStaff && ["staff", "security", "audit"].includes(page)) page = "students";
     await syncSchoolStudents(backend);
     const entries = [];
     for (const student of STUDENTS) {
@@ -1928,6 +2003,55 @@
     els.deleteStudentPermanently.disabled =
       els.confirmStudentDeletion.value.trim() !== els.confirmStudentDeletion.dataset.expected;
   });
+  els.rectifyStudentForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    const entry = state.managedStudentEntry;
+    if (!entry?.approval.student?.id) return;
+    const name = els.rectifyStudentName.value.trim();
+    els.studentManagementStatus.textContent = "Gemmer rettelsen…";
+    try {
+      const updated = await globalThis.ElevsporSupabase.rectifyStudent(
+        entry.approval.student.id,
+        name
+      );
+      entry.student.name = updated.display_name;
+      entry.approval.student.display_name = updated.display_name;
+      saveLocalStudents();
+      renderStudentManagement(entry);
+      els.studentManagementStatus.textContent = "Elevnavnet er rettet i skolens data. ✓";
+    } catch (error) {
+      els.studentManagementStatus.textContent = `Rettelsen kunne ikke gemmes: ${error.message}`;
+    }
+  });
+  els.exportStudentData.addEventListener("click", async () => {
+    const entry = state.managedStudentEntry;
+    if (!entry?.approval.student?.id) return;
+    els.exportStudentData.disabled = true;
+    els.studentManagementStatus.textContent = "Samler elevens oplysninger…";
+    try {
+      const data = await globalThis.ElevsporSupabase.exportStudentData(entry.approval.student.id);
+      const exportPackage = {
+        ...data,
+        local_device_data: {
+          profile: entry.student,
+          progress: state.progress[entry.student.id] || null
+        }
+      };
+      const blob = new Blob([`${JSON.stringify(exportPackage, null, 2)}\n`], {
+        type: "application/json;charset=utf-8"
+      });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `elevdata-${entry.approval.student.id}.json`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      els.studentManagementStatus.textContent = "Elevdata er eksporteret som JSON. ✓";
+    } catch (error) {
+      els.studentManagementStatus.textContent = `Elevdata kunne ikke eksporteres: ${error.message}`;
+    } finally {
+      els.exportStudentData.disabled = false;
+    }
+  });
   els.deleteStudentPermanently.addEventListener("click", async () => {
     const entry = state.managedStudentEntry;
     if (!entry?.approval.student?.id || els.deleteStudentPermanently.disabled) return;
@@ -2176,10 +2300,94 @@
       els.staffInvitationStatus.textContent = `Invitationen kunne ikke oprettes: ${error.message}`;
     }
   });
+  els.startMfaEnrollment.addEventListener("click", async () => {
+    els.startMfaEnrollment.disabled = true;
+    els.mfaStatus.textContent = "Opretter sikker authenticator-nøgle…";
+    try {
+      const factor = await globalThis.ElevsporSupabase.enrollMfa();
+      state.pendingMfaFactor = factor;
+      els.mfaQrCode.src = factor.totp.qr_code;
+      els.mfaSecret.textContent = factor.totp.secret;
+      els.mfaEnrollment.hidden = false;
+      els.mfaVerifyForm.hidden = false;
+      els.mfaStatus.textContent = "Scan QR-koden, og bekræft derefter med den aktuelle 6-cifrede kode.";
+      els.mfaCode.focus();
+    } catch (error) {
+      els.mfaStatus.textContent = `MFA kunne ikke opsættes: ${error.message}`;
+    } finally {
+      els.startMfaEnrollment.disabled = false;
+    }
+  });
+  els.mfaVerifyForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    const factor = state.pendingMfaFactor || state.mfaFactor;
+    if (!factor?.id) return;
+    const submit = els.mfaVerifyForm.querySelector("button[type='submit']");
+    submit.disabled = true;
+    els.mfaStatus.textContent = "Bekræfter koden…";
+    try {
+      await globalThis.ElevsporSupabase.verifyMfa(factor.id, els.mfaCode.value);
+      els.mfaCode.value = "";
+      await refreshMfaPanel();
+    } catch (error) {
+      els.mfaStatus.textContent = `Koden blev ikke godkendt: ${error.message}`;
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  els.removeMfa.addEventListener("click", async () => {
+    if (!state.mfaFactor?.id) return;
+    if (!window.confirm("Vil du fjerne authenticator-faktoren? Administratorhandlinger låses, indtil du opsætter MFA igen.")) return;
+    els.removeMfa.disabled = true;
+    try {
+      await globalThis.ElevsporSupabase.unenrollMfa(state.mfaFactor.id);
+      await refreshMfaPanel();
+    } catch (error) {
+      els.mfaStatus.textContent = `MFA kunne ikke fjernes: ${error.message}`;
+    } finally {
+      els.removeMfa.disabled = false;
+    }
+  });
+  els.retentionForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    const days = Number.parseInt(els.retentionDays.value, 10);
+    els.retentionStatus.textContent = "Gemmer opbevaringsperioden…";
+    try {
+      await globalThis.ElevsporSupabase.setRetentionDays(state.schoolId, days);
+      await refreshRetentionPanel();
+    } catch (error) {
+      els.retentionStatus.textContent = `Perioden kunne ikke gemmes: ${error.message}`;
+    }
+  });
+  els.purgeExpiredData.addEventListener("click", async () => {
+    if (!window.confirm(
+      "Kør permanent oprydning nu? Udløbne poster ældre end skolens valgte periode kan ikke gendannes i appen."
+    )) return;
+    els.purgeExpiredData.disabled = true;
+    els.retentionStatus.textContent = "Sletter udløbne poster…";
+    try {
+      const result = await globalThis.ElevsporSupabase.purgeExpiredSchoolData(state.schoolId);
+      const total = Number(result.student_activities)
+        + Number(result.access_grants)
+        + Number(result.revoked_devices)
+        + Number(result.audit_events);
+      await refreshRetentionPanel();
+      els.retentionStatus.textContent = `Oprydning gennemført: ${total} udløbne poster blev slettet. ✓`;
+    } catch (error) {
+      els.retentionStatus.textContent = `Oprydningen mislykkedes: ${error.message}`;
+    } finally {
+      els.purgeExpiredData.disabled = false;
+    }
+  });
   els.copyStaffInvitation.addEventListener("click", async () => {
     await navigator.clipboard.writeText(els.staffInvitationLink.value);
     els.staffInvitationStatus.textContent = "Linket er kopieret ✓";
   });
+  els.openPrivacy.addEventListener("click", () => {
+    if (typeof els.privacyDialog.showModal === "function") els.privacyDialog.showModal();
+    else els.privacyDialog.setAttribute("open", "");
+  });
+  els.closePrivacy.addEventListener("click", () => els.privacyDialog.close());
   els.schoolSignout.addEventListener("click", async () => {
     try {
       await globalThis.ElevsporSupabase.signOut();

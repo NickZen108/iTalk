@@ -15,8 +15,9 @@ Supabase Free Plan og kan senere flyttes til en betalt Supabase-plan uden
   e-mail og token gemmes.
 - `school_bootstraps`: kortlivede, operatøroprettede links til den første
   owner på en ny skole. Kun hashes gemmes.
-- `students`: anonym backendprofil. Navn og profilfoto må ikke sendes til
-  Supabase; appen kobler sin lokale profil til `local_reference_hash`.
+- `students`: skoleafgrænset backendprofil. Elevens visningsnavn,
+  pseudonyme `local_reference_hash` og valgfrit fødselsår gemmes i Supabase;
+  profilfoto må ikke sendes dertil.
   Nye elever oprettes som `pending` og inaktive, indtil en medarbejder fra
   samme skole godkender dem.
 - `student_activities`: hændelser med tidspunkt og valgfri varighed.
@@ -151,6 +152,31 @@ elev-enheder får aldrig navnet retur: QR/link/kode indeholder kun et tilfældig
 engangstoken, og enhedens status- og aktivitets-RPC'er returnerer eller logger
 kun tekniske elev-/enheds-id'er.
 
+## Indsigt, berigtigelse, sletning og opbevaring
+
+- En medarbejder kan hente en skoleafgrænset JSON-eksport gennem
+  `export_school_student_data(student_id)`. Eksporten indeholder elevprofil,
+  aktiviteter, enhedstidspunkter og auditposter, men aldrig token- eller
+  kodehashes. Lærer-UI'et føjer den valgte browsers lokale elevprofil og
+  progression til filen, så indsigt også omfatter oplysninger, der aldrig
+  blev sendt til Supabase.
+- En medarbejder kan rette elevens visningsnavn gennem
+  `rectify_school_student(student_id, name)`. Rettelsen registreres i
+  auditsporet uden at kopiere elevens gamle eller nye navn ind i loggen.
+- Permanent sletning sker gennem `delete_student_permanently(student_id)` og
+  kræver både owner/admin-rolle og en AAL2-bekræftet session. Relationer med
+  elev-id slettes via databasekaskader.
+- Owner/admin vælger 30-2190 dages operationel opbevaring under
+  **Sikkerhed**. Standard er 365 dage. `purge_school_expired_data(school_id)`
+  fjerner aktiviteter, udløbne engangsadgange, gamle tilbagekaldte enheder og
+  auditposter før skæringsdatoen. Elevprofil og aktive enheder berøres ikke.
+  Hver kørsel efterlader en minimal `data_purge_runs`-kvittering med tidspunkt,
+  administrator-id og samlede antal slettede poster, men ingen elev-id'er.
+- Supabase Free giver ikke en nødvendig, garanteret automatisk Cron-kørsel i
+  denne løsning. Skolen skal derfor udpege en ansvarlig, som kører manuel
+  oprydning efter en fast, dokumenteret kalender og gemmer dokumentation for
+  gennemførelsen. Indstillingen alene sletter intet.
+
 ## Månedlige rapporter
 
 `prepare_monthly_reports()` beregner den foregående kalendermåned og lægger
@@ -168,6 +194,11 @@ Ved senere aktivering:
 
 ## GDPR og sikkerhed før pilot
 
+Brug den udfyldningsklare
+[compliance- og skole-onboardingpakke](compliance/README.md). Den fordeler
+opgaver mellem skole, DPO, informationssikkerhed og leverandørkontrol og
+indeholder fortegnelse, DPIA/risiko, brudprocedure og sign-off.
+
 - Indgå databehandleraftale med Supabase og vælg passende region.
 - Udfør en DPIA/risikovurdering, fordi løsningen bruges af børn.
 - Dokumentér behandlingsgrundlag, slettefrister og procedurer for
@@ -178,7 +209,15 @@ Ved senere aktivering:
   QR-koder, URL'er, aktivitetsrækker eller audit-events.
 - Elevfotos ligger kun lokalt og skal kunne slettes fra enheden.
 - Begræns `school-media` til billeder, 5 MB og private signerede links.
-- Aktiver e-mailbekræftelse og overvej MFA for owner/admin før drift.
+- E-mailbekræftelse skal være aktiv. Owner/admin skal opsætte TOTP under
+  **Sikkerhed**. Databasen accepterer kun administratorhandlinger, når JWT'en
+  har `aal = aal2`; rollen alene er ikke nok. Det beskytter bl.a.
+  medarbejderinvitationer, samlet auditlog, permanent elevsletning og
+  administratorbeskyttede RLS-skrivninger.
+- Skolen skal udpege mindst to owners/admins og opbevare authenticatorens
+  recovery-oplysninger efter skolens godkendte procedure. En mistet faktor
+  nulstilles af en autoriseret systemejer efter identitetskontrol – ikke via
+  almindelig e-mail eller chat.
 - Test RLS med brugere fra mindst to skoler før pilot.
 - Free Plan har ikke point-in-time recovery; etabler en dokumenteret
   eksport/backup-procedure før rigtige skoledata lægges ind.

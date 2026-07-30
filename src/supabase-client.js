@@ -83,6 +83,53 @@ async function signOut() {
   if (error) throw error;
 }
 
+async function getMfaStatus() {
+  const supabase = await requireClient();
+  const [{ data: factors, error: factorsError }, { data: assurance, error: assuranceError }] =
+    await Promise.all([
+      supabase.auth.mfa.listFactors(),
+      supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    ]);
+  if (factorsError) throw factorsError;
+  if (assuranceError) throw assuranceError;
+  return {
+    currentLevel: assurance.currentLevel,
+    nextLevel: assurance.nextLevel,
+    verifiedFactors: factors.totp.filter(factor => factor.status === "verified"),
+    unverifiedFactors: factors.totp.filter(factor => factor.status !== "verified")
+  };
+}
+
+async function enrollMfa() {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.auth.mfa.enroll({
+    factorType: "totp",
+    friendlyName: "Elevspor"
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function verifyMfa(factorId, code) {
+  const supabase = await requireClient();
+  const challenge = await supabase.auth.mfa.challenge({ factorId });
+  if (challenge.error) throw challenge.error;
+  const verification = await supabase.auth.mfa.verify({
+    factorId,
+    challengeId: challenge.data.id,
+    code: String(code).replace(/\s/g, "")
+  });
+  if (verification.error) throw verification.error;
+  return verification.data;
+}
+
+async function unenrollMfa(factorId) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.auth.mfa.unenroll({ factorId });
+  if (error) throw error;
+  return data;
+}
+
 async function registerSchool(name) {
   const supabase = await requireClient();
   const { data, error } = await supabase.rpc("register_school", { school_name: name });
@@ -219,6 +266,53 @@ async function deleteStudentPermanently(studentId) {
   if (error) throw error;
 }
 
+async function rectifyStudent(studentId, displayName) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("rectify_school_student", {
+    target_student_id: studentId,
+    requested_display_name: displayName.trim()
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function exportStudentData(studentId) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("export_school_student_data", {
+    target_student_id: studentId
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function getRetentionSettings(schoolId) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("get_school_retention_settings", {
+    target_school_id: schoolId
+  });
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+async function setRetentionDays(schoolId, days) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("set_school_retention_days", {
+    target_school_id: schoolId,
+    requested_days: days
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function purgeExpiredSchoolData(schoolId) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("purge_school_expired_data", {
+    target_school_id: schoolId
+  });
+  if (error) throw error;
+  return data;
+}
+
 async function listStudentAuditEvents(studentId, limit = 20) {
   const supabase = await requireClient();
   const { data, error } = await supabase.rpc("list_student_audit_events", {
@@ -302,6 +396,10 @@ globalThis.ElevsporSupabase = {
   claimSchoolBootstrap,
   signIn,
   signOut,
+  getMfaStatus,
+  enrollMfa,
+  verifyMfa,
+  unenrollMfa,
   registerSchool,
   getMembership,
   ensureStudent,
@@ -317,6 +415,11 @@ globalThis.ElevsporSupabase = {
   revokeStudentDevice,
   setStudentActive,
   deleteStudentPermanently,
+  rectifyStudent,
+  exportStudentData,
+  getRetentionSettings,
+  setRetentionDays,
+  purgeExpiredSchoolData,
   listStudentAuditEvents,
   listSchoolAuditEvents,
   listStudentActivities,

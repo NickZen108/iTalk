@@ -51,6 +51,14 @@ const restoredStudentGrantsSql = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20260730081000_restore_student_table_rls_grants.sql"),
   "utf8"
 );
+const adminMfaSql = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20260730101500_admin_mfa_aal2.sql"),
+  "utf8"
+);
+const retentionSql = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20260730113000_retention_and_student_rights.sql"),
+  "utf8"
+);
 
 test("backend-migrationen har de nødvendige tenant-tabeller", () => {
   [
@@ -317,4 +325,40 @@ test("skolens auditspor er adminbegrænset, filtrerbart og privat", () => {
   assert.match(schoolAuditSql, /filter_from/);
   assert.match(schoolAuditSql, /filter_to/);
   assert.doesNotMatch(schoolAuditSql, /\b(?:student_name|email|birth_year)\b/i);
+});
+
+test("owner- og administratorrettigheder kræver MFA-bekræftet AAL2", () => {
+  assert.match(adminMfaSql, /create or replace function public\.is_school_admin/);
+  assert.match(adminMfaSql, /auth\.jwt\(\) ->> 'aal'/);
+  assert.match(adminMfaSql, /= 'aal2'/);
+  assert.match(adminMfaSql, /sm\.role in \('owner', 'admin'\)/);
+  assert.match(adminMfaSql, /revoke all on function public\.is_school_admin\(uuid\) from public, anon/);
+  assert.match(adminMfaSql, /grant execute on function public\.is_school_admin\(uuid\) to authenticated/);
+});
+
+test("opbevaring og manuel purge er skoleafgrænset og kræver AAL2", () => {
+  assert.match(retentionSql, /data_retention_days integer not null default 365/);
+  assert.match(retentionSql, /data_retention_days between 30 and 2190/);
+  assert.match(retentionSql, /create or replace function public\.purge_school_expired_data/);
+  assert.match(retentionSql, /public\.is_school_admin\(target_school_id\)/);
+  assert.match(retentionSql, /delete from public\.student_activities/);
+  assert.match(retentionSql, /delete from public\.student_access_grants/);
+  assert.match(retentionSql, /delete from public\.student_devices/);
+  assert.match(retentionSql, /delete from public\.student_audit_events/);
+  assert.match(retentionSql, /create table public\.data_purge_runs/);
+  assert.match(retentionSql, /insert into public\.data_purge_runs/);
+  assert.match(retentionSql, /never pupil identifiers/);
+  assert.doesNotMatch(retentionSql, /cron\.schedule|pg_cron/);
+});
+
+test("elevindsigt og berigtigelse sker gennem skoleafgrænsede RPC'er", () => {
+  assert.match(retentionSql, /create or replace function public\.rectify_school_student/);
+  assert.match(retentionSql, /create or replace function public\.export_school_student_data/);
+  assert.match(retentionSql, /public\.is_school_member\(s\.school_id\)/);
+  assert.match(retentionSql, /'student_rectified'/);
+  assert.match(retentionSql, /'activities'/);
+  assert.match(retentionSql, /'devices'/);
+  assert.match(retentionSql, /'audit_events'/);
+  assert.doesNotMatch(retentionSql, /token_hash|code_hash/);
+  assert.doesNotMatch(retentionSql, /grant execute on function public\.(?:rectify_school_student|export_school_student_data)[^\n]* to anon/);
 });

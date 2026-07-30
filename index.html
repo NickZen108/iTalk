@@ -27,7 +27,7 @@
       <p class="eyebrow">Samtaletræning i trygge rammer</p>
       <h1>Log ind på Elevspor</h1>
       <p>Lærere opretter og godkender elever fra skolens sikre lærerområde.</p>
-      <div class="privacy-note"><span aria-hidden="true">🔒</span> Elevnavne, elevfotos og samtaleindhold sendes ikke til Supabase.</div>
+      <div class="privacy-note"><span aria-hidden="true">🔒</span> Skolens elevnavne gemmes skoleafgrænset. Elevfotos og samtaleindhold sendes ikke til Supabase.</div>
       <details id="student-access-entry" class="settings student-access-entry">
         <summary>Åbn elevområdet med QR, link eller kode</summary>
         <form id="student-access-form" class="settings-body">
@@ -80,7 +80,7 @@
           <button id="dashboard-signout" class="secondary-button" type="button">Log ud</button>
         </div>
       </div>
-      <div class="privacy-note"><span aria-hidden="true">🔒</span> Elevnavne bliver på denne enhed. Supabase modtager kun et anonymt elev-id.</div>
+      <div class="privacy-note"><span aria-hidden="true">🔒</span> Elevnavne gemmes skoleafgrænset i Supabase og vises kun til skolens medarbejdere. Elevadgange indeholder kun tilfældige tokens.</div>
       <section id="admin-onboarding" class="admin-onboarding" aria-labelledby="admin-onboarding-title" hidden>
         <div class="admin-onboarding-heading">
           <div>
@@ -154,6 +154,7 @@
         <button class="school-nav-button" type="button" data-school-page="students">Elever</button>
         <button class="school-nav-button" type="button" data-school-page="create-student">Opret elev</button>
         <button id="staff-page-button" class="school-nav-button" type="button" data-school-page="staff" hidden>Medarbejdere</button>
+        <button id="security-page-button" class="school-nav-button" type="button" data-school-page="security" hidden>Sikkerhed</button>
         <button id="audit-page-button" class="school-nav-button" type="button" data-school-page="audit" hidden>Aktivitetslog</button>
       </nav>
 
@@ -203,7 +204,7 @@
           <input id="new-student-birth-year" type="number" min="1926" max="2026" inputmode="numeric" required>
           <label for="new-student-label">Klasse/hold eller andet kendetegn <span class="hint">(kun lærerområdet)</span></label>
           <input id="new-student-label" maxlength="40" autocomplete="off" placeholder="Fx 4.A eller Hold blå">
-          <p class="form-help">Kendetegnet gør det sikkert at skelne elever med samme navn. Navn og kendetegn bliver kun på denne enhed.</p>
+          <p class="form-help">Kendetegnet gør det sikkert at skelne elever med samme navn. Navnet gemmes skoleafgrænset i Supabase; kendetegnet bliver kun på denne enhed.</p>
           <button id="create-student-button" class="primary-button" type="submit">Opret elev til godkendelse</button>
           <p id="create-student-status" class="save-status" aria-live="polite"></p>
         </form>
@@ -237,6 +238,47 @@
           <p id="staff-invitation-status" class="save-status" aria-live="polite"></p>
         </div>
       </section>
+      </section>
+
+      <section id="security-page" class="school-page" hidden>
+        <div class="section-heading school-page-heading">
+          <div>
+            <p class="eyebrow">Skolens administration</p>
+            <h2>Sikkerhed og godkendelse</h2>
+            <p class="page-help">Owner og skoleadministrator skal bekræfte login med en authenticator-app, før invitationer, auditlog og permanent sletning kan bruges.</p>
+            <p><a class="secondary-button compliance-guide-link" href="https://github.com/NickZen108/iTalk/tree/main/docs/compliance" target="_blank" rel="noopener noreferrer">Åbn skolens trin-for-trin-godkendelsespakke</a></p>
+          </div>
+        </div>
+        <section class="teacher-form mfa-panel" aria-labelledby="mfa-status-title">
+          <h3 id="mfa-status-title">Din sikkerhedsstatus</h3>
+          <p id="mfa-status" class="save-status" aria-live="polite">Kontrollerer…</p>
+          <button id="start-mfa-enrollment" class="primary-button" type="button">Opsæt authenticator-app</button>
+          <div id="mfa-enrollment" hidden>
+            <p>Scan QR-koden med fx Microsoft Authenticator, Google Authenticator eller en anden TOTP-app.</p>
+            <img id="mfa-qr-code" class="mfa-qr-code" alt="QR-kode til opsætning af totrinsbekræftelse">
+            <p>Kan du ikke scanne? Indtast denne nøgle manuelt:</p>
+            <output id="mfa-secret" class="access-code"></output>
+          </div>
+          <form id="mfa-verify-form" hidden>
+            <label for="mfa-code">6-cifret kode fra authenticator-appen</label>
+            <input id="mfa-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+            <button class="primary-button" type="submit">Bekræft kode</button>
+          </form>
+          <button id="remove-mfa" class="danger-button" type="button" hidden>Fjern authenticator</button>
+          <p class="form-help">Fjern kun faktoren, hvis du straks opsætter en ny. Uden MFA kan du stadig se elever, men ikke udføre administratorhandlinger.</p>
+        </section>
+        <section class="teacher-form retention-panel" aria-labelledby="retention-title">
+          <h3 id="retention-title">Opbevaring og oprydning</h3>
+          <p class="page-help">Vælg skolens godkendte opbevaringsperiode. På Supabase Free køres oprydningen manuelt herfra; indstillingen sletter ikke noget af sig selv.</p>
+          <form id="retention-form">
+            <label for="retention-days">Opbevar operationelle elevdata i dage</label>
+            <input id="retention-days" type="number" min="30" max="2190" required>
+            <button class="primary-button" type="submit">Gem periode</button>
+          </form>
+          <p id="retention-status" class="save-status" aria-live="polite">Kontrollerer…</p>
+          <button id="purge-expired-data" class="danger-button" type="button">Kør manuel oprydning</button>
+          <p class="form-help">Oprydning fjerner gamle aktiviteter, udløbne engangsadgange, gamle tilbagekaldte enheder og gamle auditposter. Elevprofilen og aktive enheder slettes ikke.</p>
+        </section>
       </section>
 
       <section id="audit-page" class="school-page" hidden>
@@ -486,6 +528,16 @@
         <p id="student-lifecycle-description"></p>
         <button id="toggle-student-active" class="secondary-button" type="button"></button>
       </section>
+      <section class="student-rights-section" aria-labelledby="student-rights-title">
+        <h3 id="student-rights-title">Indsigt og berigtigelse</h3>
+        <p>Eksportér de oplysninger, skolen har om eleven, eller ret elevens viste navn. Eksporten indeholder ingen adgangstokens.</p>
+        <form id="rectify-student-form">
+          <label for="rectify-student-name">Korrekt elevnavn</label>
+          <input id="rectify-student-name" maxlength="80" required>
+          <button class="secondary-button" type="submit">Gem rettelse</button>
+        </form>
+        <button id="export-student-data" class="secondary-button" type="button">Eksportér elevdata (JSON)</button>
+      </section>
       <section id="permanent-delete-panel" class="danger-zone" hidden>
         <h3>Permanent sletning</h3>
         <p>Sletter elevens anonyme backenddata, aktiviteter og enheder. Handlingen kan ikke fortrydes.</p>
@@ -496,6 +548,35 @@
       <p id="student-management-status" class="save-status" aria-live="polite"></p>
     </dialog>
   </main>
+
+  <footer class="site-footer">
+    <button id="open-privacy" class="text-button" type="button">Sådan passer ElevSpor på dine oplysninger</button>
+  </footer>
+
+  <dialog id="privacy-dialog" class="topic-dialog privacy-dialog">
+    <div class="dialog-heading">
+      <div><p class="eyebrow">Privatliv i ElevSpor</p><h2>Hvad gemmer vi – og hvorfor?</h2></div>
+      <button id="close-privacy" class="secondary-button" type="button">Luk</button>
+    </div>
+    <section aria-labelledby="privacy-for-student">
+      <h3 id="privacy-for-student">Kort fortalt til eleven</h3>
+      <p>Din skole bruger ElevSpor til samtaletræning. Skolens lærere kan se dit navn, fødselsår hvis det bruges, om du er godkendt, og hvornår du har startet eller gennemført en øvelse.</p>
+      <p>ElevSpor gemmer ikke det, du siger eller skriver i samtalen, i Supabase. Dit foto, lærerens lokale noter og dine lokale træningsfremskridt bliver på den enhed, hvor de er oprettet.</p>
+      <p>Du eller dine forældre kan bede skolen om at vise, rette eller slette oplysninger. Tal med din lærer eller skolens databeskyttelseskontakt.</p>
+    </section>
+    <section aria-labelledby="privacy-for-adults">
+      <h3 id="privacy-for-adults">Til forældre og medarbejdere</h3>
+      <ul>
+        <li><strong>Dataansvarlig:</strong> den skole eller kommune, som har taget ElevSpor i brug.</li>
+        <li><strong>Formål og hjemmel:</strong> fastlægges og oplyses af skolen før brug med rigtige elevdata.</li>
+        <li><strong>Backenddata:</strong> visningsnavn, pseudonym reference, eventuelt fødselsår, godkendelses-/enhedsstatus og begrænsede aktivitets- og sikkerhedsmetadata.</li>
+        <li><strong>Modtagere:</strong> autoriserede medarbejdere på samme skole samt Supabase som cloudleverandør efter skolens aftalegrundlag.</li>
+        <li><strong>Opbevaring:</strong> skolen fastsætter perioden og skal gennemføre dokumenteret oprydning.</li>
+        <li><strong>Rettigheder:</strong> kontakt skolen ved spørgsmål om indsigt, rettelse, sletning, begrænsning, indsigelse eller klage.</li>
+      </ul>
+      <p>Den konkrete skole skal supplere denne tekst med navn og kontaktoplysninger på den dataansvarlige og DPO, behandlingsgrundlag, godkendt opbevaringsperiode og eventuelle tredjelandsoverførsler.</p>
+    </section>
+  </dialog>
 
   <script src="runtime-config.js"></script>
   <script src="supabase-client.js"></script>

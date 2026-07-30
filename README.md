@@ -31,10 +31,16 @@ bygges i `android/app/build/outputs/apk/debug/`.
 
 ## Privatliv
 
-Elevnavne, profilfotos, fremskridt og lærernoter gemmes lokalt. Supabase
-modtager kun en anonym elevreference, godkendelsesstatus og aktivitetsdata.
+Elevens visningsnavn, en pseudonym elevreference, valgfrit fødselsår,
+godkendelsesstatus og aktivitetsmetadata gemmes i Supabase, så skolens
+medarbejdere kan genkende eleven på tværs af lærerenheder. Profilfotos,
+fremskridt, lærernoter og samtaleindhold gemmes fortsat kun lokalt.
 Tekst-til-tale bruger enhedens indbyggede oplæsningsfunktion.
 
 Medarbejderkonti er invitationsbaserede. Backendens SQL-migrationer ligger i
 `supabase/`, isolerer skoler med Row Level Security og klargør månedlige
 opgørelser uden at sende mail. Se [docs/supabase-backend.md](docs/supabase-backend.md).
+
+Før brug med rigtige elever skal skolen færdiggøre og godkende
+[compliance- og onboardingpakken](docs/compliance/README.md). Skabelonerne
+erstatter ikke skolens egen juridiske, DPO- eller sikkerhedsmæssige vurdering.
