@@ -133,8 +133,8 @@ ikke skrive direkte til medlemsroller. En bruger kan kun tilhøre én skole.
 
 ## Elevtilmelding og lærergodkendelse
 
-1. Elevens lokale profil anmoder om adgang gennem `students`. Kun profilens
-   SHA-256-reference, fødselsår og tekniske metadata sendes til Supabase.
+1. Elevens lokale profil anmoder om adgang gennem `students`. Profilens
+   SHA-256-reference, fødselsår og visningsnavn sendes til Supabase.
 2. Nye rækker får `approval_status = 'pending'` og `active = false`.
 3. Elevområdet låser samtaleøvelser, mens godkendelsen afventer.
 4. En indlogget medarbejder fra samme skole godkender via
@@ -144,9 +144,12 @@ ikke skrive direkte til medlemsroller. En bruger kan kun tilhøre én skole.
    elevens skole matcher JWT-brugerens skole, og eleven både er aktiv og
    godkendt.
 
-Backend gemmer fortsat ikke elevnavn eller foto. Derfor vises navnet kun på
-den enhed, hvor profilen er oprettet. Denne privacy-first MVP kræver, at
-læreren godkender elevprofilen på en skoleenhed, der kender den lokale profil.
+Backend gemmer elevens visningsnavn på `students`, så skolens medarbejdere kan
+se samme navn på deres forskellige enheder. Navnet læses via
+`list_school_students()` og er afgrænset til brugerens skole. Anonyme
+elev-enheder får aldrig navnet retur: QR/link/kode indeholder kun et tilfældigt
+engangstoken, og enhedens status- og aktivitets-RPC'er returnerer eller logger
+kun tekniske elev-/enheds-id'er.
 
 ## Månedlige rapporter
 
@@ -169,8 +172,10 @@ Ved senere aktivering:
 - Udfør en DPIA/risikovurdering, fordi løsningen bruges af børn.
 - Dokumentér behandlingsgrundlag, slettefrister og procedurer for
   indsigt/sletning.
-- Gem ingen elevnavne, e-mails, fritekstnoter eller samtaleindhold i
-  backendens elevtabeller.
+- Gem kun det nødvendige elevvisningsnavn; gem fortsat ingen e-mails,
+  fritekstnoter eller samtaleindhold i backendens elevtabeller.
+- Begræns navne til skolens medarbejdere via RLS/RPC, og medtag dem aldrig i
+  QR-koder, URL'er, aktivitetsrækker eller audit-events.
 - Elevfotos ligger kun lokalt og skal kunne slettes fra enheden.
 - Begræns `school-media` til billeder, 5 MB og private signerede links.
 - Aktiver e-mailbekræftelse og overvej MFA for owner/admin før drift.

@@ -607,11 +607,17 @@
         await backend.recordStudentDeviceActivity(deviceToken, type, durationSeconds);
         return;
       }
+      const student = currentStudent();
+      if (student?.backendId) {
+        await backend.recordStaffStudentActivity(student.backendId, type, durationSeconds);
+        return;
+      }
       await backend.recordActivity(
         backendLocalStudentId(state.studentId),
         type,
         durationSeconds,
-        progress.birthYear || null
+        progress.birthYear || null,
+        currentStudent()?.name || null
       );
     } catch (error) {
       console.warn("Elevspor-aktivitet kunne ikke synkroniseres", error);
@@ -636,9 +642,26 @@
       if (!await backend.getSession()) {
         return { status: "unavailable", message: "Brug din elevkode eller bed en lærer om at åbne elevområdet." };
       }
+      const syncedStudent = currentStudent()?.remoteApproval;
+      if (syncedStudent) {
+        state.approval = syncedStudent;
+        const status = syncedStudent.approval_status === "approved" && !syncedStudent.active
+          ? "inactive"
+          : syncedStudent.approval_status;
+        return {
+          status,
+          student: syncedStudent,
+          message: status === "approved"
+            ? "Godkendt af en lærer. Du kan gå i gang."
+            : status === "inactive"
+              ? "Elevprofilen er deaktiveret af skolen."
+              : "Din tilmelding venter på en lærers godkendelse."
+        };
+      }
       const student = await backend.getStudentApproval(
         backendLocalStudentId(state.studentId),
-        progress.birthYear || null
+        progress.birthYear || null,
+        currentStudent()?.name || null
       );
       state.approval = student;
       const status = student.approval_status === "approved" && !student.active
@@ -698,6 +721,41 @@
 
   function saveLocalStudents() {
     store.write("elevspor.localStudents", STUDENTS);
+  }
+
+  async function syncSchoolStudents(backend) {
+    const remoteStudents = await backend.listSchoolStudents();
+    const localByBackendId = new Map(
+      STUDENTS.filter(student => student.backendId).map(student => [student.backendId, student])
+    );
+    const localByHash = new Map();
+    for (const student of STUDENTS) {
+      const reference = backendLocalStudentId(student.id);
+      localByHash.set(await backend.hashLocalReference(reference), student);
+    }
+    for (const remote of remoteStudents) {
+      let student = localByBackendId.get(remote.id) || localByHash.get(remote.local_reference_hash);
+      if (!student) {
+        student = {
+          id: typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name: remote.display_name || "Elev uden navn",
+          avatar: "🎯",
+          profile: "Elevprofil",
+          levels: defaultLevels()
+        };
+        STUDENTS.push(student);
+      }
+      student.backendId = remote.id;
+      if (remote.display_name) student.name = remote.display_name;
+      const progress = state.progress[student.id] || createProgress(student);
+      if (remote.birth_year) progress.birthYear = remote.birth_year;
+      state.progress[student.id] = progress;
+      student.remoteApproval = remote;
+    }
+    saveLocalStudents();
+    saveProgress();
   }
 
   function removeLocalStudent(studentId) {
@@ -978,7 +1036,8 @@
       const progress = state.progress[testEntry.student.id] || {};
       const freshStudent = await globalThis.ElevsporSupabase.getStudentApproval(
         backendLocalStudentId(testEntry.student.id),
-        progress.birthYear || null
+        progress.birthYear || null,
+        testEntry.student.name
       );
       const freshStatus = freshStudent.approval_status === "approved" && !freshStudent.active
         ? "inactive"
@@ -1287,11 +1346,20 @@
       || schoolPageFromHash(location.hash)
       || store.read("elevspor.lastSchoolPage", "students");
     if (!canManageStaff && ["staff", "audit"].includes(page)) page = "students";
+    await syncSchoolStudents(backend);
     const entries = [];
     for (const student of STUDENTS) {
       state.studentId = student.id;
       currentProgress();
-      const approval = await loadStudentApproval();
+      const remote = student.remoteApproval;
+      const approval = remote
+        ? {
+            status: remote.approval_status === "approved" && !remote.active
+              ? "inactive"
+              : remote.approval_status,
+            student: remote
+          }
+        : await loadStudentApproval();
       let devices = [];
       if (approval.student?.id && ["approved", "inactive"].includes(approval.status)) {
         try {
@@ -1721,7 +1789,8 @@
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       await globalThis.ElevsporSupabase.getStudentApproval(
         backendLocalStudentId(id),
-        birthYear
+        birthYear,
+        name
       );
       const student = {
         id,

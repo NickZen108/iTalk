@@ -101,21 +101,40 @@ async function getMembership() {
   return data;
 }
 
-async function ensureStudent(localId, birthYear) {
+async function ensureStudent(localId, birthYear, displayName = null) {
   const supabase = await requireClient();
   const session = await getSession();
   if (!session) throw new Error("Login kræves.");
   const localReferenceHash = await hashLocalReference(localId);
   const { data, error } = await supabase.rpc("ensure_school_student", {
     local_reference_hash: localReferenceHash,
-    student_birth_year: birthYear || null
+    student_birth_year: birthYear || null,
+    student_display_name: displayName?.trim() || null
   });
   if (error) throw error;
   return data;
 }
 
-async function getStudentApproval(localId, birthYear) {
-  return ensureStudent(localId, birthYear);
+async function getStudentApproval(localId, birthYear, displayName = null) {
+  return ensureStudent(localId, birthYear, displayName);
+}
+
+async function listSchoolStudents() {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("list_school_students");
+  if (error) throw error;
+  return data || [];
+}
+
+async function recordStaffStudentActivity(studentId, activityType, durationSeconds) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("record_staff_student_activity", {
+    target_student_id: studentId,
+    requested_activity_type: activityType,
+    requested_duration_seconds: durationSeconds ?? null
+  });
+  if (error) throw error;
+  return data;
 }
 
 async function approveStudent(studentId) {
@@ -239,11 +258,11 @@ async function listStudentActivities(studentIds) {
   return data;
 }
 
-async function recordActivity(localId, activityType, durationSeconds, birthYear) {
+async function recordActivity(localId, activityType, durationSeconds, birthYear, displayName = null) {
   const supabase = await requireClient();
   const session = await getSession();
   if (!session) return null;
-  const student = await ensureStudent(localId, birthYear);
+  const student = await ensureStudent(localId, birthYear, displayName);
   if (student.approval_status !== "approved") {
     const error = new Error("Eleven afventer lærerens godkendelse.");
     error.code = "STUDENT_APPROVAL_REQUIRED";
@@ -287,6 +306,8 @@ globalThis.ElevsporSupabase = {
   getMembership,
   ensureStudent,
   getStudentApproval,
+  listSchoolStudents,
+  recordStaffStudentActivity,
   approveStudent,
   createStudentAccess,
   redeemStudentAccess,

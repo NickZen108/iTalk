@@ -111,7 +111,7 @@ test("en samtale kræver både fuld tid og løbende elevsvar", () => {
   assert.equal(isConversationPassed({ remaining: 0, duration: 300, turns: 10 }), true);
 });
 
-test("resultatresuméet viser lærerens lokale elevnavn uden at sende det til backend", () => {
+test("resultatresuméet viser elevnavnet og klienten synkroniserer det skoleafgrænset", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
   const backend = fs.readFileSync(path.join(__dirname, "..", "src", "supabase-client.js"), "utf8");
@@ -119,7 +119,12 @@ test("resultatresuméet viser lærerens lokale elevnavn uden at sende det til ba
   assert.match(html, /Resultatresumé til lærer/);
   assert.match(html, /id="result-student-name"/);
   assert.match(app, /resultStudentName\.textContent = `Elev: \$\{currentStudent\(\)\.name\}`/);
-  assert.doesNotMatch(backend, /student_name|elevnavn/i);
+  assert.match(backend, /student_display_name: displayName\?\.trim\(\) \|\| null/);
+  assert.match(backend, /rpc\("list_school_students"\)/);
+  assert.match(app, /await syncSchoolStudents\(backend\)/);
+  assert.match(app, /student\?\.backendId/);
+  assert.match(backend, /rpc\("record_staff_student_activity"/);
+  assert.doesNotMatch(app, /url\.searchParams\.(?:set|append)\([^)]*name/i);
 });
 
 test("alder kan tilpasses med en skjult mental override", () => {

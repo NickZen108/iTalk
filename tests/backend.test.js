@@ -43,6 +43,10 @@ const schoolAuditSql = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20260729221500_school_audit_log.sql"),
   "utf8"
 );
+const studentNamesSql = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20260730080000_student_display_names.sql"),
+  "utf8"
+);
 
 test("backend-migrationen har de nødvendige tenant-tabeller", () => {
   [
@@ -75,7 +79,7 @@ test("alle tabeller med skoledata beskyttes af RLS", () => {
   assert.match(sql, /public\.is_school_admin\(school_id\)/);
 });
 
-test("elevtabellen gemmer ikke navn, email, foto eller samtaleindhold", () => {
+test("grundmigrationen gemmer kun en pseudonym elevreference", () => {
   const studentTable = sql.match(
     /create table public\.students \(([\s\S]*?)\n\);/
   )[1];
@@ -83,6 +87,31 @@ test("elevtabellen gemmer ikke navn, email, foto eller samtaleindhold", () => {
     (forbidden) => assert.doesNotMatch(studentTable, new RegExp(`\\b${forbidden}\\b`, "i"))
   );
   assert.match(studentTable, /local_reference_hash text not null/);
+});
+
+test("elevnavne lagres skoleafgrænset gennem validerede RPC'er", () => {
+  assert.match(studentNamesSql, /add column display_name text/);
+  assert.match(studentNamesSql, /char_length\(display_name\) between 1 and 80/);
+  assert.match(studentNamesSql, /create function public\.ensure_school_student\(/);
+  assert.match(studentNamesSql, /student_display_name text default null/);
+  assert.match(studentNamesSql, /where sm\.user_id = \(select auth\.uid\(\)\)/);
+  assert.match(studentNamesSql, /create or replace function public\.list_school_students\(\)/);
+  assert.match(studentNamesSql, /where public\.is_school_member\(s\.school_id\)/);
+  assert.match(studentNamesSql, /revoke insert, update, delete on public\.students from authenticated/);
+  assert.match(studentNamesSql, /grant execute on function public\.list_school_students\(\) to authenticated/);
+  assert.doesNotMatch(studentNamesSql, /grant execute on function public\.list_school_students\(\) to anon/);
+  assert.match(studentNamesSql, /create or replace function public\.record_staff_student_activity\(/);
+  assert.match(studentNamesSql, /and public\.is_school_member\(s\.school_id\)/);
+  assert.match(
+    studentNamesSql,
+    /grant execute on function public\.record_staff_student_activity\(uuid, text, integer\) to authenticated/
+  );
+});
+
+test("elevnavnet lækkes ikke gennem adgangs-, aktivitets- eller auditmigrationer", () => {
+  [studentDeviceSql, studentAuditSql, schoolAuditSql].forEach(migration => {
+    assert.doesNotMatch(migration, /\b(?:s\.display_name|student_name)\b/i);
+  });
 });
 
 test("månedlig pris er 100 kr og aktivitetsgrænsen kan versionsstyres", () => {
