@@ -1,15 +1,41 @@
 begin;
 select plan(20);
 
-select has_table('public', 'school_approvals');
-select has_table('public', 'supplier_notification_settings');
-select has_table('public', 'supplier_notification_outbox');
-select has_column('public', 'supplier_notification_outbox', 'customer_id');
-select hasnt_column('public', 'supplier_notification_outbox', 'school_id');
-select hasnt_column('public', 'supplier_notification_outbox', 'recipient');
-select hasnt_column('public', 'supplier_notification_outbox', 'signer');
-select hasnt_column('public', 'supplier_notification_outbox', 'notes');
-select hasnt_column('public', 'supplier_notification_outbox', 'url');
+select ok(to_regclass('public.school_approvals') is not null, 'private approval table exists');
+select ok(to_regclass('public.supplier_notification_settings') is not null, 'private routing table exists');
+select ok(to_regclass('public.supplier_notification_outbox') is not null, 'private outbox exists');
+select ok(
+  exists (
+    select 1 from pg_attribute
+    where attrelid = 'public.supplier_notification_outbox'::regclass
+      and attname = 'customer_id' and not attisdropped
+  ),
+  'outbox has opaque customer_id'
+);
+select ok(
+  not exists (
+    select 1 from pg_attribute
+    where attrelid = 'public.supplier_notification_outbox'::regclass
+      and attname in ('school_id','recipient','signer','notes','url') and not attisdropped
+  ),
+  'outbox excludes school, recipient, signer, notes and URL'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.school_approvals', 'SELECT'),
+  'authenticated clients have no direct approval-table access'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.supplier_notification_settings', 'SELECT'),
+  'authenticated clients cannot read the routing address'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.supplier_notification_outbox', 'SELECT'),
+  'authenticated clients cannot read the outbox'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.supplier_notification_outbox', 'INSERT'),
+  'authenticated clients cannot forge outbox items'
+);
 select is(
   (select delivery_status from public.supplier_notification_outbox limit 1),
   null::text,
