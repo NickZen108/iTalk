@@ -111,6 +111,17 @@ test("en samtale kræver både fuld tid og løbende elevsvar", () => {
   assert.equal(isConversationPassed({ remaining: 0, duration: 300, turns: 10 }), true);
 });
 
+test("resultatresuméet viser lærerens lokale elevnavn uden at sende det til backend", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const backend = fs.readFileSync(path.join(__dirname, "..", "src", "supabase-client.js"), "utf8");
+
+  assert.match(html, /Resultatresumé til lærer/);
+  assert.match(html, /id="result-student-name"/);
+  assert.match(app, /resultStudentName\.textContent = `Elev: \$\{currentStudent\(\)\.name\}`/);
+  assert.doesNotMatch(backend, /student_name|elevnavn/i);
+});
+
 test("alder kan tilpasses med en skjult mental override", () => {
   assert.equal(chronologicalAge(2016, 2026), 10);
   assert.equal(chronologicalAge(3000, 2026), null);

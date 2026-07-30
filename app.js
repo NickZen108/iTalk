@@ -441,6 +441,7 @@
     speechStatus: $("#speech-status"),
     suggestions: $("#reply-suggestions"),
     resultIcon: $("#result-icon"),
+    resultStudentName: $("#result-student-name"),
     resultTitle: $("#result-title"),
     resultMessage: $("#result-message"),
     resultStats: $("#result-stats"),
@@ -1594,6 +1595,9 @@
     const elapsedSeconds = session.duration - Math.max(0, session.remaining);
     void recordBackendActivity("conversation_completed", elapsedSeconds);
     state.session = null;
+    // Elevnavnet hentes kun fra den lokale profil på enheden. Det sendes ikke
+    // til backend sammen med aktiviteten eller resultatet.
+    els.resultStudentName.textContent = `Elev: ${currentStudent().name}`;
     els.resultIcon.textContent = passed ? "🏆" : "🌱";
     els.resultTitle.textContent = passed ? "Samtalen er bestået!" : "Godt forsøg";
     els.resultMessage.textContent = passed
