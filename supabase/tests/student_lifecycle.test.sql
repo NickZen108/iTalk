@@ -37,6 +37,11 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '51000000-0000-0000-0000-000000000001', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.aal', 'aal2', true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"51000000-0000-0000-0000-000000000001","aal":"aal2"}',
+  true
+);
 select is(
   (select count(*)::integer from public.list_student_devices('a5100000-0000-0000-0000-000000000001')),
   1, 'teacher sees devices for a pupil at the same school'
@@ -75,6 +80,11 @@ select throws_ok(
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '53000000-0000-0000-0000-000000000003', true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"53000000-0000-0000-0000-000000000003","aal":"aal2"}',
+  true
+);
 select throws_ok(
   $$select public.set_student_active('a5100000-0000-0000-0000-000000000001', false)$$,
   'P0001', 'Godkendt elev blev ikke fundet på din skole',
@@ -83,6 +93,11 @@ select throws_ok(
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '52000000-0000-0000-0000-000000000002', true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"52000000-0000-0000-0000-000000000002","aal":"aal2"}',
+  true
+);
 select lives_ok(
   $$select public.delete_student_permanently('a5100000-0000-0000-0000-000000000001')$$,
   'school owner can permanently delete the pupil'

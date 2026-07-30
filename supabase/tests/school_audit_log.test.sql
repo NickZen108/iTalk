@@ -29,6 +29,11 @@ values
 set local role authenticated;
 select set_config('request.jwt.claim.role','authenticated',true);
 select set_config('request.jwt.claim.aal','aal2',true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"62000000-0000-0000-0000-000000000001","aal":"aal2"}',
+  true
+);
 select set_config('request.jwt.claim.sub','62000000-0000-0000-0000-000000000001',true);
 select is((select count(*)::int from public.list_school_audit_events('b7000000-0000-0000-0000-000000000001')),2,'owner sees own school events');
 select is((select count(*)::int from public.list_school_audit_events('b7000000-0000-0000-0000-000000000002')),0,'owner cannot see another school');
@@ -39,8 +44,18 @@ select is((select count(*)::int from public.list_school_audit_events('b7000000-0
 select is((select subject_student_id from public.list_school_audit_events('b7000000-0000-0000-0000-000000000001') limit 1),'b7100000-0000-0000-0000-000000000002'::uuid,'events are newest first');
 
 select set_config('request.jwt.claim.sub','62000000-0000-0000-0000-000000000002',true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"62000000-0000-0000-0000-000000000002","aal":"aal2"}',
+  true
+);
 select is((select count(*)::int from public.list_school_audit_events('b7000000-0000-0000-0000-000000000001')),2,'admin sees own school events');
 select set_config('request.jwt.claim.sub','62000000-0000-0000-0000-000000000003',true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"62000000-0000-0000-0000-000000000003","aal":"aal2"}',
+  true
+);
 select is((select count(*)::int from public.list_school_audit_events('b7000000-0000-0000-0000-000000000001')),0,'teacher cannot see school-wide audit');
 select throws_ok(
   $$insert into public.student_audit_events (school_id,subject_student_id,action,actor_name) values ('b7000000-0000-0000-0000-000000000001','b7100000-0000-0000-0000-000000000004','device_removed','Fake')$$,

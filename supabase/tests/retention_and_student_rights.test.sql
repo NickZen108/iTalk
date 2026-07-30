@@ -38,6 +38,11 @@ set local role authenticated;
 select set_config('request.jwt.claim.role','authenticated',true);
 select set_config('request.jwt.claim.aal','aal1',true);
 select set_config('request.jwt.claim.sub','64000000-0000-0000-0000-000000000002',true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"64000000-0000-0000-0000-000000000002","aal":"aal1"}',
+  true
+);
 
 select lives_ok(
   $$select public.rectify_school_student('b9100000-0000-0000-0000-000000000001','Korrekt navn')$$,
@@ -61,6 +66,11 @@ select is(
 );
 
 select set_config('request.jwt.claim.sub','64000000-0000-0000-0000-000000000003',true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"64000000-0000-0000-0000-000000000003","aal":"aal1"}',
+  true
+);
 select throws_ok(
   $$select public.export_school_student_data('b9100000-0000-0000-0000-000000000001')$$,
   'P0001','Eleven blev ikke fundet på din skole',
@@ -73,12 +83,22 @@ select throws_ok(
 );
 
 select set_config('request.jwt.claim.sub','64000000-0000-0000-0000-000000000001',true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"64000000-0000-0000-0000-000000000001","aal":"aal1"}',
+  true
+);
 select throws_ok(
   $$select public.set_school_retention_days('b9000000-0000-0000-0000-000000000001',365)$$,
   'P0001','AAL2-bekræftet skoleadministrator kræves',
   'AAL1 owner cannot change retention'
 );
 select set_config('request.jwt.claim.aal','aal2',true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"64000000-0000-0000-0000-000000000001","aal":"aal2"}',
+  true
+);
 select is(
   public.set_school_retention_days('b9000000-0000-0000-0000-000000000001',365),
   365,

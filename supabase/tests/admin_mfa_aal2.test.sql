@@ -18,6 +18,11 @@ set local role authenticated;
 select set_config('request.jwt.claim.role','authenticated',true);
 select set_config('request.jwt.claim.sub','63000000-0000-0000-0000-000000000001',true);
 select set_config('request.jwt.claim.aal','aal1',true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"63000000-0000-0000-0000-000000000001","aal":"aal1"}',
+  true
+);
 
 select is(
   public.is_school_admin('b8000000-0000-0000-0000-000000000001'),
@@ -32,6 +37,11 @@ select throws_ok(
 );
 
 select set_config('request.jwt.claim.aal','aal2',true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"63000000-0000-0000-0000-000000000001","aal":"aal2"}',
+  true
+);
 select is(
   public.is_school_admin('b8000000-0000-0000-0000-000000000001'),
   true,
@@ -43,6 +53,11 @@ select lives_ok(
 );
 
 select set_config('request.jwt.claim.sub','63000000-0000-0000-0000-000000000002',true);
+select set_config(
+  'request.jwt.claims',
+  '{"role":"authenticated","sub":"63000000-0000-0000-0000-000000000002","aal":"aal2"}',
+  true
+);
 select is(
   public.is_school_admin('b8000000-0000-0000-0000-000000000001'),
   false,
