@@ -525,6 +525,23 @@
     purgeExpiredData: $("#purge-expired-data")
   });
   Object.assign(els, {
+    schoolApprovalForm: $("#school-approval-form"),
+    approvalDocumentType: $("#approval-document-type"),
+    approvalDocumentVersion: $("#approval-document-version"),
+    approvalStatus: $("#approval-status"),
+    approvalDate: $("#approval-date"),
+    approvalReviewDate: $("#approval-review-date"),
+    approvalRole: $("#approval-role"),
+    approvalArchiveReference: $("#approval-archive-reference"),
+    approvalDocumentHash: $("#approval-document-hash"),
+    schoolApprovalStatus: $("#school-approval-status"),
+    schoolApprovalList: $("#school-approval-list"),
+    supplierNotificationForm: $("#supplier-notification-form"),
+    supplierNotificationEnabled: $("#supplier-notification-enabled"),
+    supplierNotificationRecipient: $("#supplier-notification-recipient"),
+    supplierNotificationStatus: $("#supplier-notification-status")
+  });
+  Object.assign(els, {
     schoolAuditFilters: $("#school-audit-filters"),
     auditFrom: $("#audit-from"),
     auditTo: $("#audit-to"),
@@ -1004,6 +1021,47 @@
     if (name === "security") {
       void refreshMfaPanel();
       void refreshRetentionPanel();
+      void refreshApprovalRegistry();
+    }
+  }
+
+  async function refreshApprovalRegistry() {
+    els.schoolApprovalStatus.textContent = "Henter godkendelser…";
+    els.schoolApprovalList.replaceChildren();
+    try {
+      const [approvals, notification] = await Promise.all([
+        globalThis.ElevsporSupabase.getSchoolApprovalRegistry(state.schoolId),
+        globalThis.ElevsporSupabase.getSupplierNotificationSetting(state.schoolId)
+      ]);
+      if (!notification) {
+        els.schoolApprovalStatus.textContent = "Registeret kræver en AAL2-bekræftet administratorsession.";
+        return;
+      }
+      els.supplierNotificationEnabled.checked = notification.enabled;
+      els.supplierNotificationRecipient.value = "";
+      els.supplierNotificationRecipient.placeholder = notification.recipient_configured
+        ? "Adresse er gemt og skjult"
+        : "godkendelser@leverandør.dk";
+      els.supplierNotificationStatus.textContent = notification.recipient_configured
+        ? "En modtageradresse er konfigureret, men vises aldrig igen."
+        : "Ingen modtageradresse er konfigureret.";
+      for (const approval of approvals) {
+        const item = document.createElement("article");
+        item.className = "approval-registry-item";
+        const title = document.createElement("strong");
+        title.textContent = `${approval.document_type} · ${approval.document_version} · ${approval.status}`;
+        const details = document.createElement("p");
+        details.textContent = `Review ${approval.review_at} · rolle ${approval.approver_role} · arkiv ${approval.archive_reference}`;
+        const hash = document.createElement("p");
+        hash.textContent = `SHA-256 ${approval.document_sha256}`;
+        item.append(title, details, hash);
+        els.schoolApprovalList.append(item);
+      }
+      els.schoolApprovalStatus.textContent = approvals.length
+        ? `${approvals.length} registerposter.`
+        : "Ingen godkendelser registreret endnu.";
+    } catch (error) {
+      els.schoolApprovalStatus.textContent = `Registeret kunne ikke hentes: ${error.message}`;
     }
   }
 
@@ -2377,6 +2435,54 @@
       els.retentionStatus.textContent = `Oprydningen mislykkedes: ${error.message}`;
     } finally {
       els.purgeExpiredData.disabled = false;
+    }
+  });
+  els.approvalStatus.addEventListener("change", () => {
+    els.approvalDate.required = els.approvalStatus.value === "approved";
+    if (els.approvalStatus.value !== "approved") els.approvalDate.value = "";
+  });
+  els.schoolApprovalForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (els.approvalStatus.value === "approved" && !els.approvalDate.value) {
+      els.schoolApprovalStatus.textContent = "Godkendelsesdato kræves ved status Godkendt.";
+      return;
+    }
+    els.schoolApprovalStatus.textContent = "Gemmer registerpost…";
+    try {
+      await globalThis.ElevsporSupabase.saveSchoolApproval(state.schoolId, {
+        documentType: els.approvalDocumentType.value.trim().toLowerCase(),
+        documentVersion: els.approvalDocumentVersion.value.trim(),
+        status: els.approvalStatus.value,
+        approvedAt: els.approvalDate.value
+          ? new Date(`${els.approvalDate.value}T12:00:00Z`).toISOString()
+          : null,
+        reviewAt: els.approvalReviewDate.value,
+        approverRole: els.approvalRole.value,
+        archiveReference: els.approvalArchiveReference.value.trim(),
+        documentSha256: els.approvalDocumentHash.value.trim().toLowerCase(),
+        appVersion: "0.4.1"
+      });
+      els.schoolApprovalForm.reset();
+      await refreshApprovalRegistry();
+      els.schoolApprovalStatus.textContent = "Registerposten er gemt. ✓";
+    } catch (error) {
+      els.schoolApprovalStatus.textContent = `Registerposten kunne ikke gemmes: ${error.message}`;
+    }
+  });
+  els.supplierNotificationForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    els.supplierNotificationStatus.textContent = "Gemmer skolens valg…";
+    try {
+      await globalThis.ElevsporSupabase.setSupplierNotificationSetting(
+        state.schoolId,
+        els.supplierNotificationEnabled.checked,
+        els.supplierNotificationRecipient.value.trim() || null
+      );
+      await refreshApprovalRegistry();
+      els.supplierNotificationStatus.textContent =
+        "Valget er gemt. Ingen ekstern mailafsendelse er aktiveret. ✓";
+    } catch (error) {
+      els.supplierNotificationStatus.textContent = `Valget kunne ikke gemmes: ${error.message}`;
     }
   });
   els.copyStaffInvitation.addEventListener("click", async () => {

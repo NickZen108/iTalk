@@ -340,6 +340,11 @@ div.student-list-empty { display: flex; flex-wrap: wrap; align-items: center; ju
 .audit-filters label { display: grid; gap: .35rem; font-weight: 800; }
 .audit-filters input, .audit-filters select { width: 100%; }
 .school-audit-list { display: grid; gap: .65rem; }
+.approval-registry-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .65rem 1rem; }
+.approval-registry-form label, .approval-registry-form button { align-self: end; }
+.approval-registry-list { display: grid; gap: .6rem; margin-top: 1rem; }
+.approval-registry-item { padding: .8rem 1rem; border-left: 4px solid var(--brand); border-radius: 0 12px 12px 0; background: var(--surface); }
+.approval-registry-item p { margin: .2rem 0; color: var(--muted); overflow-wrap: anywhere; }
 .school-audit-item { display: grid; grid-template-columns: minmax(150px,.65fr) 1fr; gap: .7rem 1rem; padding: .9rem 1rem; border-left: 4px solid var(--brand); border-radius: 0 14px 14px 0; background: var(--surface); box-shadow: var(--shadow); }
 .school-audit-item p { margin: .15rem 0 0; color: var(--muted); }
 .student-device-item { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .8rem; border-radius: 14px; background: var(--surface); }
@@ -362,5 +367,6 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   .student-admin-card { grid-template-columns: 1fr; }
   .student-admin-actions { justify-content: flex-start; }
   .student-admin-actions button { flex: 1 1 150px; }
+  .approval-registry-form { grid-template-columns: 1fr; }
   .student-access-options { grid-template-columns: 1fr; }
 }

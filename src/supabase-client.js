@@ -313,6 +313,52 @@ async function purgeExpiredSchoolData(schoolId) {
   return data;
 }
 
+async function getSchoolApprovalRegistry(schoolId) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("get_school_approval_registry", {
+    target_school_id: schoolId
+  });
+  if (error) throw error;
+  return data || [];
+}
+
+async function getSupplierNotificationSetting(schoolId) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("get_supplier_notification_setting", {
+    target_school_id: schoolId
+  });
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+async function setSupplierNotificationSetting(schoolId, enabled, recipient = null) {
+  const supabase = await requireClient();
+  const { error } = await supabase.rpc("set_supplier_notification_setting", {
+    target_school_id: schoolId,
+    requested_enabled: Boolean(enabled),
+    requested_recipient: recipient || null
+  });
+  if (error) throw error;
+}
+
+async function saveSchoolApproval(schoolId, approval) {
+  const supabase = await requireClient();
+  const { data, error } = await supabase.rpc("save_school_approval", {
+    target_school_id: schoolId,
+    requested_document_type: approval.documentType,
+    requested_document_version: approval.documentVersion,
+    requested_status: approval.status,
+    requested_approved_at: approval.status === "approved" ? approval.approvedAt : null,
+    requested_review_at: approval.reviewAt,
+    requested_approver_role: approval.approverRole,
+    requested_archive_reference: approval.archiveReference,
+    requested_document_sha256: approval.documentSha256,
+    requested_app_version: approval.appVersion
+  });
+  if (error) throw error;
+  return data;
+}
+
 async function listStudentAuditEvents(studentId, limit = 20) {
   const supabase = await requireClient();
   const { data, error } = await supabase.rpc("list_student_audit_events", {
@@ -420,6 +466,10 @@ globalThis.ElevsporSupabase = {
   getRetentionSettings,
   setRetentionDays,
   purgeExpiredSchoolData,
+  getSchoolApprovalRegistry,
+  getSupplierNotificationSetting,
+  setSupplierNotificationSetting,
+  saveSchoolApproval,
   listStudentAuditEvents,
   listSchoolAuditEvents,
   listStudentActivities,

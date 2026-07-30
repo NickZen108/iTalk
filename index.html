@@ -279,6 +279,50 @@
           <button id="purge-expired-data" class="danger-button" type="button">Kør manuel oprydning</button>
           <p class="form-help">Oprydning fjerner gamle aktiviteter, udløbne engangsadgange, gamle tilbagekaldte enheder og gamle auditposter. Elevprofilen og aktive enheder slettes ikke.</p>
         </section>
+        <section class="teacher-form approval-registry-panel" aria-labelledby="approval-registry-title">
+          <h3 id="approval-registry-title">Skolens godkendelsesregister</h3>
+          <p class="page-help">Kun AAL2-bekræftede skoleadministratorer kan se og ændre registeret. Gem dokumentet i skolens eget arkiv; Elevspor gemmer kun reference og SHA-256-hash.</p>
+          <form id="school-approval-form" class="approval-registry-form">
+            <label for="approval-document-type">Dokumenttype</label>
+            <input id="approval-document-type" pattern="[a-z0-9][a-z0-9_-]{1,49}" placeholder="fx dpa" required>
+            <label for="approval-document-version">Dokumentversion</label>
+            <input id="approval-document-version" maxlength="40" placeholder="fx 2026-07" required>
+            <label for="approval-status">Status</label>
+            <select id="approval-status" required>
+              <option value="draft">Kladde</option><option value="approved">Godkendt</option>
+              <option value="rejected">Afvist</option><option value="expired">Udløbet</option>
+            </select>
+            <label for="approval-date">Godkendelsesdato (kræves ved Godkendt)</label>
+            <input id="approval-date" type="date">
+            <label for="approval-review-date">Reviewdato</label>
+            <input id="approval-review-date" type="date" required>
+            <label for="approval-role">Godkenderrolle (aldrig personnavn)</label>
+            <select id="approval-role" required>
+              <option value="school_owner">Skoleejer</option><option value="school_admin">Skoleadministrator</option>
+              <option value="dpo">DPO</option><option value="it_security">IT-sikkerhed</option>
+              <option value="management">Ledelse</option>
+            </select>
+            <label for="approval-archive-reference">Intern arkivreference (ikke URL)</label>
+            <input id="approval-archive-reference" maxlength="120" placeholder="fx ESDH-2026-184" required>
+            <label for="approval-document-hash">Dokumentets SHA-256 (64 hex-tegn)</label>
+            <input id="approval-document-hash" minlength="64" maxlength="64" pattern="[0-9a-fA-F]{64}" autocomplete="off" required>
+            <button class="primary-button" type="submit">Gem registerpost</button>
+          </form>
+          <p id="school-approval-status" class="save-status" aria-live="polite"></p>
+          <div id="school-approval-list" class="approval-registry-list"></div>
+        </section>
+        <section class="teacher-form supplier-notification-panel" aria-labelledby="supplier-notification-title">
+          <h3 id="supplier-notification-title">Dataminimeret leverandørnotifikation</h3>
+          <p class="page-help">Frivilligt skolevalg. Outboxen indeholder kun et tilfældigt kunde-id, appversion, status, datoer og dokumenthash. Der sendes intet, før en godkendt mailudbyder senere er konfigureret.</p>
+          <form id="supplier-notification-form">
+            <label class="checkbox-label"><input id="supplier-notification-enabled" type="checkbox"> Opret dataminimeret notifikation ved endelig status</label>
+            <label for="supplier-notification-recipient">Modtageradresse (lad stå tom for at beholde eksisterende)</label>
+            <input id="supplier-notification-recipient" type="email" autocomplete="off" placeholder="godkendelser@leverandør.dk">
+            <button class="primary-button" type="submit">Gem notifikationsvalg</button>
+          </form>
+          <p id="supplier-notification-status" class="save-status" aria-live="polite"></p>
+          <p class="form-help">Den gemte adresse returneres aldrig fra API’et og kan derfor ikke ses af lærere eller genvises i formularen.</p>
+        </section>
       </section>
 
       <section id="audit-page" class="school-page" hidden>

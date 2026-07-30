@@ -17,6 +17,7 @@ informationssikkerhedsfunktion og eventuelle indkøbs-/jurafunktion.
 | [Hændelsesberedskab](haendelsesberedskab.md) | Procedure ved mistanke om databrud | Ja, indsæt kontaktpersoner og øv proceduren |
 | [Backup og gendannelse](backup-gendannelse.md) | Krypteret Free Plan-backup og dokumenteret restore-test | Ja, vælg lager/nøgler og udfør testen |
 | [DPO-godkendelse](dpo-godkendelse.md) | Samlet beslutnings- og sign-off-pakke | Ja, beslut og underskriv |
+| [Godkendelsesregister](godkendelsesregister.md) | AAL2-register, dokumenthash og valgfri dataminimeret outbox | Ja, registrér skolens beslutninger |
 
 ## Statusnøgler
 
